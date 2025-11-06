@@ -41,6 +41,7 @@ try {
         'data' => [
             'name' => $user['name'],
             'photo_url' => $user['profile_picture'] ?? '',
+            'balance' => (int)$user['points'],
             'user' => [
                 'id' => (int)$user['id'],
                 'email' => $user['email'],
