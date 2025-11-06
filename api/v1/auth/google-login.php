@@ -5,7 +5,7 @@ header('Access-Control-Allow-Methods: POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
+    http_response_code(200 );
     exit;
 }
 
@@ -15,7 +15,7 @@ try {
     $input = json_decode(file_get_contents('php://input'), true);
     
     if (!isset($input['google_token']) || !isset($input['device_id'])) {
-        http_response_code(400);
+        http_response_code(400 );
         echo json_encode(['success' => false, 'error' => 'Google token e device_id são obrigatórios']);
         exit;
     }
@@ -27,7 +27,7 @@ try {
     // Por enquanto, vamos extrair o email do token (decodificar JWT)
     $tokenParts = explode('.', $googleToken);
     if (count($tokenParts) !== 3) {
-        http_response_code(401);
+        http_response_code(401 );
         echo json_encode(['success' => false, 'error' => 'Token do Google inválido']);
         exit;
     }
@@ -36,9 +36,10 @@ try {
     $googleId = isset($payload['sub']) ? $payload['sub'] : null;
     $email = isset($payload['email']) ? $payload['email'] : null;
     $name = isset($payload['name']) ? $payload['name'] : null;
+    $profilePicture = isset($payload['picture']) ? $payload['picture'] : null;
     
     if (!$googleId || !$email) {
-        http_response_code(401);
+        http_response_code(401 );
         echo json_encode(['success' => false, 'error' => 'Não foi possível extrair dados do token do Google']);
         exit;
     }
@@ -56,15 +57,15 @@ try {
         $user = $result->fetch_assoc();
         $userId = $user['id'];
         
-        // Atualizar Google ID e Device ID se necessário
-        $stmt = $conn->prepare("UPDATE users SET google_id = ?, device_id = ?, email = ?, name = ?, updated_at = NOW() WHERE id = ?");
-        $stmt->bind_param("ssssi", $googleId, $deviceId, $email, $name, $userId);
+        // Atualizar Google ID, Device ID e foto de perfil se necessário
+        $stmt = $conn->prepare("UPDATE users SET google_id = ?, device_id = ?, email = ?, name = ?, profile_picture = ?, updated_at = NOW() WHERE id = ?");
+        $stmt->bind_param("sssssi", $googleId, $deviceId, $email, $name, $profilePicture, $userId);
         $stmt->execute();
         
     } else {
         // Criar novo usuário
-        $stmt = $conn->prepare("INSERT INTO users (google_id, device_id, email, name, created_at) VALUES (?, ?, ?, ?, NOW())");
-        $stmt->bind_param("ssss", $googleId, $deviceId, $email, $name);
+        $stmt = $conn->prepare("INSERT INTO users (google_id, device_id, email, name, profile_picture, created_at) VALUES (?, ?, ?, ?, ?, NOW())");
+        $stmt->bind_param("sssss", $googleId, $deviceId, $email, $name, $profilePicture);
         $stmt->execute();
         $userId = $conn->insert_id;
     }
@@ -78,7 +79,7 @@ try {
     $stmt->execute();
     
     // Buscar dados atualizados do usuário
-    $stmt = $conn->prepare("SELECT id, email, name, device_id, google_id, points FROM users WHERE id = ?");
+    $stmt = $conn->prepare("SELECT id, email, name, device_id, google_id, profile_picture, points FROM users WHERE id = ?");
     $stmt->bind_param("i", $userId);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -94,13 +95,14 @@ try {
                 'name' => $user['name'],
                 'device_id' => $user['device_id'],
                 'google_id' => $user['google_id'],
+                'profile_picture' => $user['profile_picture'],
                 'points' => (int)$user['points']
             ]
         ]
     ]);
     
 } catch (Exception $e) {
-    http_response_code(500);
+    http_response_code(500 );
     echo json_encode(['success' => false, 'error' => 'Erro interno: ' . $e->getMessage()]);
 }
 ?>
