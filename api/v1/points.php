@@ -1,5 +1,5 @@
 <?php
-// Endpoint da API para Pontos (v1)
+// Endpoint da API para Pontos (v1 )
 
 header("Content-Type: application/json");
 require_once '../../database.php';
@@ -13,7 +13,7 @@ switch ($method) {
         // Exemplo: /api/v1/points.php?user_id=1
         if (isset($_GET['user_id'])) {
             $userId = intval($_GET['user_id']);
-            $stmt = $conn->prepare("SELECT id, points_earned, activity_type, created_at FROM points_history WHERE user_id = ? ORDER BY created_at DESC");
+            $stmt = $conn->prepare("SELECT id, points, description, created_at FROM points_history WHERE user_id = ? ORDER BY created_at DESC");
             $stmt->bind_param("i", $userId);
             $stmt->execute();
             $result = $stmt->get_result();
@@ -24,7 +24,7 @@ switch ($method) {
             echo json_encode($history);
             $stmt->close();
         } else {
-            http_response_code(400);
+            http_response_code(400 );
             echo json_encode(['message' => 'User ID is required']);
         }
         break;
@@ -42,7 +42,7 @@ switch ($method) {
 
             try {
                 // Inserir no histórico de pontos
-                $stmt1 = $conn->prepare("INSERT INTO points_history (user_id, points_earned, activity_type) VALUES (?, ?, ?)");
+                $stmt1 = $conn->prepare("INSERT INTO points_history (user_id, points, description, created_at) VALUES (?, ?, ?, NOW())");
                 $stmt1->bind_param("iis", $userId, $pointsEarned, $activityType);
                 $stmt1->execute();
                 $stmt1->close();
@@ -54,22 +54,22 @@ switch ($method) {
                 $stmt2->close();
 
                 $conn->commit();
-                http_response_code(200);
+                http_response_code(200 );
                 echo json_encode(['message' => 'Points added successfully']);
 
             } catch (Exception $e) {
                 $conn->rollback();
-                http_response_code(500);
+                http_response_code(500 );
                 echo json_encode(['message' => 'Failed to add points', 'error' => $e->getMessage()]);
             }
         } else {
-            http_response_code(400);
+            http_response_code(400 );
             echo json_encode(['message' => 'User ID, points earned, and activity type are required']);
         }
         break;
 
     default:
-        http_response_code(405);
+        http_response_code(405 );
         echo json_encode(['message' => 'Method Not Allowed']);
         break;
 }
