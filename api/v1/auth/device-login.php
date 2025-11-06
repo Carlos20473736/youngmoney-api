@@ -32,12 +32,14 @@ if (!isset($data['device_id']) || empty($data['device_id'])) {
 $device_id = $data['device_id'];
 
 try {
-    $db = getDatabase();
+    $db = getDbConnection();
     
     // Verificar se usuário já existe com este device_id
     $stmt = $db->prepare("SELECT * FROM users WHERE device_id = ?");
-    $stmt->execute([$device_id]);
-    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+    $stmt->bind_param("s", $device_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $user = $result->fetch_assoc();
     
     if ($user) {
         // Usuário já existe, fazer login
@@ -47,20 +49,23 @@ try {
         
         // Atualizar last_login
         $stmt = $db->prepare("UPDATE users SET last_login = NOW() WHERE id = ?");
-        $stmt->execute([$user_id]);
+        $stmt->bind_param("i", $user_id);
+        $stmt->execute();
         
     } else {
         // Criar novo usuário
         $email = 'user_' . substr($device_id, 0, 8) . '@youngmoney.app';
         $name = 'Usuário ' . substr($device_id, 0, 8);
+        $points = 0;
         
-        $stmt = $db->prepare("
-            INSERT INTO users (device_id, email, name, points, created_at, last_login) 
-            VALUES (?, ?, ?, 0, NOW(), NOW())
-        ");
-        $stmt->execute([$device_id, $email, $name]);
+        $stmt = $db->prepare(
+            "INSERT INTO users (device_id, email, name, points, created_at, last_login) 
+            VALUES (?, ?, ?, ?, NOW(), NOW())"
+        );
+        $stmt->bind_param("sssi", $device_id, $email, $name, $points);
+        $stmt->execute();
         
-        $user_id = $db->lastInsertId();
+        $user_id = $db->insert_id;
     }
     
     // Gerar token de autenticação (simples para este exemplo)
@@ -83,7 +88,7 @@ try {
         ]
     ]);
     
-} catch (PDOException $e) {
+} catch (Exception $e) {
     http_response_code(500);
     echo json_encode([
         'success' => false,
