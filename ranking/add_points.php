@@ -1,11 +1,11 @@
 <?php
-header('Content-Type: application/json');
+header('Content-Type: application/json' );
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
+    http_response_code(200 );
     exit;
 }
 
@@ -16,7 +16,7 @@ try {
     $token = isset($headers['Authorization']) ? str_replace('Bearer ', '', $headers['Authorization']) : null;
     
     if (!$token) {
-        http_response_code(401);
+        http_response_code(401 );
         echo json_encode(['success' => false, 'error' => 'Token não fornecido']);
         exit;
     }
@@ -24,7 +24,7 @@ try {
     $input = json_decode(file_get_contents('php://input'), true);
     
     if (!isset($input['points'])) {
-        http_response_code(400);
+        http_response_code(400 );
         echo json_encode(['success' => false, 'error' => 'Pontos não fornecidos']);
         exit;
     }
@@ -32,7 +32,7 @@ try {
     $points = (int)$input['points'];
     
     if ($points <= 0) {
-        http_response_code(400);
+        http_response_code(400 );
         echo json_encode(['success' => false, 'error' => 'Pontos devem ser maior que zero']);
         exit;
     }
@@ -46,7 +46,7 @@ try {
     $result = $stmt->get_result();
     
     if ($result->num_rows === 0) {
-        http_response_code(401);
+        http_response_code(401 );
         echo json_encode(['success' => false, 'error' => 'Token inválido']);
         exit;
     }
@@ -65,12 +65,13 @@ try {
         'success' => true,
         'data' => [
             'points_added' => $points,
+            'daily_points' => $points,
             'total_points' => $newPoints
         ]
     ]);
     
 } catch (Exception $e) {
-    http_response_code(500);
+    http_response_code(500 );
     echo json_encode(['success' => false, 'error' => 'Erro interno: ' . $e->getMessage()]);
 }
 ?>
