@@ -38,8 +38,13 @@ try {
     $user = $result->fetch_assoc();
     $userId = $user['id'];
     
-    // Gerar código de convite baseado no ID do usuário
-    $inviteCode = 'YM' . str_pad($userId, 6, '0', STR_PAD_LEFT);
+    // Buscar código de convite do banco
+    $stmt = $conn->prepare("SELECT invite_code FROM users WHERE id = ?");
+    $stmt->bind_param("i", $userId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $userData = $result->fetch_assoc();
+    $inviteCode = $userData['invite_code'] ?? 'YM' . str_pad($userId, 6, '0', STR_PAD_LEFT);
     
     echo json_encode([
         'success' => true,
