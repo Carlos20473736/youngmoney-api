@@ -23,7 +23,7 @@ try {
     
     $conn = getDbConnection();
     
-    $stmt = $conn->prepare("SELECT id, email, name, device_id, points, created_at FROM users WHERE token = ?");
+    $stmt = $conn->prepare("SELECT id, email, name, device_id, points, profile_picture, created_at FROM users WHERE token = ?");
     $stmt->bind_param("s", $token);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -39,12 +39,15 @@ try {
     echo json_encode([
         'success' => true,
         'data' => [
+            'name' => $user['name'],
+            'photo_url' => $user['profile_picture'] ?? '',
             'user' => [
                 'id' => (int)$user['id'],
                 'email' => $user['email'],
                 'name' => $user['name'],
                 'device_id' => $user['device_id'],
                 'points' => (int)$user['points'],
+                'profile_picture' => $user['profile_picture'] ?? '',
                 'created_at' => $user['created_at']
             ]
         ]
