@@ -3,8 +3,8 @@ FROM php:8.2-apache
 # Instalar extensões PHP necessárias
 RUN docker-php-ext-install mysqli pdo pdo_mysql
 
-# Habilitar mod_rewrite do Apache
-RUN a2enmod rewrite
+# Habilitar módulos do Apache
+RUN a2enmod rewrite headers
 
 # Copiar arquivos da aplicação
 COPY . /var/www/html/
