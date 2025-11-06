@@ -5,7 +5,7 @@ header('Access-Control-Allow-Methods: POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200 );
+    http_response_code(200);
     exit;
 }
 
@@ -15,7 +15,7 @@ try {
     $input = json_decode(file_get_contents('php://input'), true);
     
     if (!isset($input['google_token']) || !isset($input['device_id'])) {
-        http_response_code(400 );
+        http_response_code(400);
         echo json_encode(['success' => false, 'error' => 'Google token e device_id são obrigatórios']);
         exit;
     }
@@ -27,7 +27,7 @@ try {
     // Por enquanto, vamos extrair o email do token (decodificar JWT)
     $tokenParts = explode('.', $googleToken);
     if (count($tokenParts) !== 3) {
-        http_response_code(401 );
+        http_response_code(401);
         echo json_encode(['success' => false, 'error' => 'Token do Google inválido']);
         exit;
     }
@@ -39,7 +39,7 @@ try {
     $profilePicture = isset($payload['picture']) ? $payload['picture'] : null;
     
     if (!$googleId || !$email) {
-        http_response_code(401 );
+        http_response_code(401);
         echo json_encode(['success' => false, 'error' => 'Não foi possível extrair dados do token do Google']);
         exit;
     }
@@ -63,9 +63,10 @@ try {
         $stmt->execute();
         
     } else {
-        // Criar novo usuário
-        $stmt = $conn->prepare("INSERT INTO users (google_id, device_id, email, name, profile_picture, created_at) VALUES (?, ?, ?, ?, ?, NOW())");
-        $stmt->bind_param("sssss", $googleId, $deviceId, $email, $name, $profilePicture);
+        // Criar novo usuário com código de convite aleatório
+        $inviteCode = 'YM' . strtoupper(substr(bin2hex(random_bytes(4)), 0, 6));
+        $stmt = $conn->prepare("INSERT INTO users (google_id, device_id, email, name, profile_picture, invite_code, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())");
+        $stmt->bind_param("ssssss", $googleId, $deviceId, $email, $name, $profilePicture, $inviteCode);
         $stmt->execute();
         $userId = $conn->insert_id;
     }
@@ -102,7 +103,7 @@ try {
     ]);
     
 } catch (Exception $e) {
-    http_response_code(500 );
+    http_response_code(500);
     echo json_encode(['success' => false, 'error' => 'Erro interno: ' . $e->getMessage()]);
 }
 ?>
