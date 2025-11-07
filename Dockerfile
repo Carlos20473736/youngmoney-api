@@ -12,6 +12,14 @@ COPY . /var/www/html/
 # Configurar permissões
 RUN chown -R www-data:www-data /var/www/html
 
+# Configurar Apache para passar variáveis de ambiente para PHP
+RUN echo "PassEnv DB_HOST" >> /etc/apache2/apache2.conf && \
+    echo "PassEnv DB_PORT" >> /etc/apache2/apache2.conf && \
+    echo "PassEnv DB_USER" >> /etc/apache2/apache2.conf && \
+    echo "PassEnv DB_PASSWORD" >> /etc/apache2/apache2.conf && \
+    echo "PassEnv DB_NAME" >> /etc/apache2/apache2.conf && \
+    echo "PassEnv SERVER_ENCRYPTION_KEY" >> /etc/apache2/apache2.conf
+
 # Expor porta 80
 EXPOSE 80
 
