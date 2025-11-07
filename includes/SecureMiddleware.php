@@ -250,7 +250,7 @@ class SecureMiddleware {
             $pdo = new PDO(
                 "mysql:host=" . getenv('DB_HOST') . ";port=" . getenv('DB_PORT') . ";dbname=" . getenv('DB_NAME'),
                 getenv('DB_USER'),
-                getenv('DB_PASS'),
+                getenv('DB_PASSWORD'),
                 [
                     PDO::MYSQL_ATTR_SSL_CA => true,
                     PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT => false,
@@ -330,7 +330,7 @@ class SecureMiddleware {
             $pdo = new PDO(
                 "mysql:host=" . getenv('DB_HOST') . ";port=" . getenv('DB_PORT') . ";dbname=" . getenv('DB_NAME'),
                 getenv('DB_USER'),
-                getenv('DB_PASS'),
+                getenv('DB_PASSWORD'),
                 [
                     PDO::MYSQL_ATTR_SSL_CA => true,
                     PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT => false,
