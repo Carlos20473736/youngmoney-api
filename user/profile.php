@@ -11,6 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once __DIR__ . '/../database.php';
 require_once __DIR__ . '/../xreq/validate.php';
+require_once __DIR__ . '/../includes/DecryptMiddleware.php';
 
 try {
     // Validar XReq token
@@ -40,23 +41,21 @@ try {
     
     $user = $result->fetch_assoc();
     
-    echo json_encode([
-        'success' => true,
-        'data' => [
+    // Enviar resposta criptografada
+    DecryptMiddleware::sendSuccess([
+        'name' => $user['name'],
+        'photo_url' => $user['profile_picture'] ?? '',
+        'balance' => (int)$user['points'],
+        'user' => [
+            'id' => (int)$user['id'],
+            'email' => $user['email'],
             'name' => $user['name'],
-            'photo_url' => $user['profile_picture'] ?? '',
-            'balance' => (int)$user['points'],
-            'user' => [
-                'id' => (int)$user['id'],
-                'email' => $user['email'],
-                'name' => $user['name'],
-                'device_id' => $user['device_id'],
-                'points' => (int)$user['points'],
-                'profile_picture' => $user['profile_picture'] ?? '',
-                'created_at' => $user['created_at']
-            ]
+            'device_id' => $user['device_id'],
+            'points' => (int)$user['points'],
+            'profile_picture' => $user['profile_picture'] ?? '',
+            'created_at' => $user['created_at']
         ]
-    ]);
+    ], true);
     
 } catch (Exception $e) {
     http_response_code(500);

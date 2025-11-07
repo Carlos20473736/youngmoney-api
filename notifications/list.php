@@ -11,6 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once __DIR__ . '/../database.php';
 require_once __DIR__ . '/../xreq/validate.php';
+require_once __DIR__ . '/../includes/DecryptMiddleware.php';
 
 try {
     // Validar XReq token
@@ -40,13 +41,10 @@ try {
     }
     
     // Por enquanto, retornar lista vazia (criar tabela notifications depois)
-    echo json_encode([
-        'success' => true,
-        'data' => [
-            'notifications' => [],
-            'unread_count' => 0
-        ]
-    ]);
+    DecryptMiddleware::sendSuccess([
+        'notifications' => [],
+        'unread_count' => 0
+    ], true);
     
 } catch (Exception $e) {
     http_response_code(500);
