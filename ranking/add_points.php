@@ -29,6 +29,9 @@ try {
     // Processar requisição (descriptografa automaticamente se necessário)
     $input = SecureMiddleware::processRequest();
     
+    // DEBUG: Log do que foi recebido
+    error_log("add_points.php: Input received: " . json_encode($input));
+    
     if (!isset($input['points'])) {
         http_response_code(400 );
         echo json_encode(['success' => false, 'error' => 'Pontos não fornecidos']);
