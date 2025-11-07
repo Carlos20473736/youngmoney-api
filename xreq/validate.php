@@ -1,19 +1,20 @@
 <?php
 /**
- * Validação de XReq Token
+ * Validação Segura de XReq Token com Timestamp + Signature
  * 
- * Este arquivo deve ser incluído no início de cada endpoint que requer XReq
- * Valida que o token foi enviado, tem formato correto e não foi usado antes
- * 
- * IMPORTANTE: Aceita tokens duplicados dentro de 2 segundos para lidar com
- * duplicação de requisições por proxies/load balancers (ex: Railway)
+ * Este arquivo valida XReq com proteção contra scripts:
+ * - Token tem formato: timestamp:signature
+ * - Timestamp deve estar dentro de 5 segundos
+ * - Signature = MD5(timestamp + SECRET_KEY + user_agent + ip)
  * 
  * USO:
- * require_once __DIR__ . '/../xreq/validate.php';
+ * require_once __DIR__ . '/validate_xreq_secure.php';
  */
 
-// Função para validar XReq
-function validateXReq() {
+// Chave secreta (DEVE ser a mesma no app Android!)
+define('XREQ_SECRET_KEY', 'young_money_secret_2025_v1');
+
+function validateXReqSecure() {
     // Obter X-Req do header
     $headers = getallheaders();
     $xreqToken = $headers['X-Req'] ?? $headers['x-req'] ?? null;
@@ -27,8 +28,8 @@ function validateXReq() {
         exit;
     }
     
-    // Validar formato (32 ou 64 caracteres hexadecimais)
-    if (!preg_match('/^[a-f0-9]{32,64}$/i', $xreqToken)) {
+    // Validar formato: timestamp:signature
+    if (!preg_match('/^(\d+):([a-f0-9]{32})$/i', $xreqToken, $matches)) {
         http_response_code(400);
         echo json_encode([
             'success' => false,
@@ -37,13 +38,48 @@ function validateXReq() {
         exit;
     }
     
+    $timestamp = $matches[1];
+    $signature = $matches[2];
+    
+    // Validar timestamp (máximo 5 segundos de diferença)
+    $now = round(microtime(true) * 1000); // Milliseconds
+    $diff = abs($now - $timestamp);
+    
+    if ($diff > 5000) { // 5 segundos
+        http_response_code(403);
+        echo json_encode([
+            'success' => false,
+            'error' => 'Token expirado',
+            'debug' => [
+                'diff_ms' => $diff,
+                'max_ms' => 5000
+            ]
+        ]);
+        exit;
+    }
+    
+    // Validar assinatura
+    $ipAddress = $_SERVER['REMOTE_ADDR'] ?? '';
+    $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
+    
+    $expectedSignature = md5($timestamp . XREQ_SECRET_KEY . $userAgent . $ipAddress);
+    
+    if (strtolower($signature) !== strtolower($expectedSignature)) {
+        http_response_code(403);
+        echo json_encode([
+            'success' => false,
+            'error' => 'Assinatura inválida (possível script/bot)'
+        ]);
+        exit;
+    }
+    
     try {
-        require_once __DIR__ . '/../database.php';
+        require_once __DIR__ . '/database.php';
         $conn = getDbConnection();
         
-        // Verificar se token já foi usado
+        // Verificar se token já foi usado (usando a assinatura como chave única)
         $stmt = $conn->prepare("SELECT id, created_at FROM xreq_tokens WHERE token = ?");
-        $stmt->bind_param("s", $xreqToken);
+        $stmt->bind_param("s", $signature);
         $stmt->execute();
         $result = $stmt->get_result();
         
@@ -51,11 +87,11 @@ function validateXReq() {
             // Token já existe - verificar se é duplicata recente ou replay attack
             $row = $result->fetch_assoc();
             $createdAt = strtotime($row['created_at']);
-            $now = time();
-            $diff = $now - $createdAt;
+            $nowSeconds = time();
+            $diffSeconds = $nowSeconds - $createdAt;
             
             // Se o token foi criado há menos de 2 segundos, aceitar (duplicata de proxy)
-            if ($diff <= 2) {
+            if ($diffSeconds <= 2) {
                 // Duplicata legítima - aceitar silenciosamente
                 return true;
             } else {
@@ -65,17 +101,13 @@ function validateXReq() {
                     'success' => false,
                     'error' => 'Token XReq já foi utilizado (possível replay attack)',
                     'debug' => [
-                        'token_age_seconds' => $diff,
+                        'token_age_seconds' => $diffSeconds,
                         'created_at' => $row['created_at']
                     ]
                 ]);
                 exit;
             }
         }
-        
-        // Obter informações da requisição
-        $ipAddress = $_SERVER['REMOTE_ADDR'] ?? null;
-        $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? null;
         
         // Obter user_id se tiver Bearer token
         $userId = null;
@@ -92,13 +124,13 @@ function validateXReq() {
             }
         }
         
-        // Salvar token no banco (marcar como usado)
+        // Salvar token no banco (usar signature como chave única)
         if ($userId === null) {
             $stmt = $conn->prepare("INSERT INTO xreq_tokens (token, user_id, ip_address, user_agent) VALUES (?, NULL, ?, ?)");
-            $stmt->bind_param("sss", $xreqToken, $ipAddress, $userAgent);
+            $stmt->bind_param("sss", $signature, $ipAddress, $userAgent);
         } else {
             $stmt = $conn->prepare("INSERT INTO xreq_tokens (token, user_id, ip_address, user_agent) VALUES (?, ?, ?, ?)");
-            $stmt->bind_param("siss", $xreqToken, $userId, $ipAddress, $userAgent);
+            $stmt->bind_param("siss", $signature, $userId, $ipAddress, $userAgent);
         }
         
         if (!$stmt->execute()) {
@@ -119,5 +151,5 @@ function validateXReq() {
 }
 
 // Executar validação automaticamente quando este arquivo é incluído
-validateXReq();
+validateXReqSecure();
 ?>
