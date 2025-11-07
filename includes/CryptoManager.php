@@ -17,7 +17,7 @@ class CryptoManager {
      * IMPORTANTE: Esta chave DEVE ser idêntica à do CryptoManager.java
      * Por segurança, mova para variável de ambiente.
      */
-    private static $SECRET_KEY = "YoungMoney2024SecretKey!@#$%"; // Exemplo - MUDE ISSO!
+    private static $SECRET_KEY = "young_money_crypto_key_2025_v1!!"; // DEVE SER IGUAL AO ANDROID
     
     /**
      * Descriptografa dados criptografados pelo Android
