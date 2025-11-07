@@ -1,8 +1,14 @@
 <?php
+/**
+ * Google Login com Segurança Máxima V2
+ * 
+ * Retorna encrypted_seed e session_salt para ativar chaves rotativas
+ */
+
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Req');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
@@ -10,43 +16,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 require_once __DIR__ . '/../../../database.php';
+require_once __DIR__ . '/../../../includes/SecureKeyManager.php';
+require_once __DIR__ . '/../../../includes/DecryptMiddleware.php';
 
 try {
-    $input = json_decode(file_get_contents('php://input'), true);
+    // 1. PROCESSAR REQUISIÇÃO (pode vir criptografada com V1)
+    $data = DecryptMiddleware::processRequest();
     
-    if (!isset($input['google_token']) || !isset($input['device_id'])) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Google token e device_id são obrigatórios']);
+    if (empty($data)) {
+        // Fallback para JSON não criptografado
+        $data = json_decode(file_get_contents('php://input'), true);
+    }
+    
+    // 2. VALIDAR DADOS
+    if (!isset($data['google_token']) || !isset($data['device_id'])) {
+        DecryptMiddleware::sendError('Google token e device_id são obrigatórios');
         exit;
     }
     
-    $googleToken = $input['google_token'];
-    $deviceId = $input['device_id'];
+    $googleToken = $data['google_token'];
+    $deviceId = $data['device_id'];
     
-    // Verificar token do Google (simplificado - em produção, validar com Google API)
-    // Por enquanto, vamos extrair o email do token (decodificar JWT)
+    // 3. VERIFICAR TOKEN DO GOOGLE
     $tokenParts = explode('.', $googleToken);
     if (count($tokenParts) !== 3) {
-        http_response_code(401);
-        echo json_encode(['success' => false, 'error' => 'Token do Google inválido']);
+        DecryptMiddleware::sendError('Token do Google inválido', 401);
         exit;
     }
     
     $payload = json_decode(base64_decode($tokenParts[1]), true);
-    $googleId = isset($payload['sub']) ? $payload['sub'] : null;
-    $email = isset($payload['email']) ? $payload['email'] : null;
-    $name = isset($payload['name']) ? $payload['name'] : null;
-    $profilePicture = isset($payload['picture']) ? $payload['picture'] : null;
+    $googleId = $payload['sub'] ?? null;
+    $email = $payload['email'] ?? null;
+    $name = $payload['name'] ?? null;
+    $profilePicture = $payload['picture'] ?? null;
     
     if (!$googleId || !$email) {
-        http_response_code(401);
-        echo json_encode(['success' => false, 'error' => 'Não foi possível extrair dados do token do Google']);
+        DecryptMiddleware::sendError('Não foi possível extrair dados do token do Google', 401);
         exit;
     }
     
+    // 4. CONECTAR AO BANCO
     $conn = getDbConnection();
     
-    // Verificar se usuário já existe (por Google ID ou Device ID)
+    // 5. VERIFICAR SE USUÁRIO JÁ EXISTE
     $stmt = $conn->prepare("SELECT * FROM users WHERE google_id = ? OR device_id = ?");
     $stmt->bind_param("ss", $googleId, $deviceId);
     $stmt->execute();
@@ -57,13 +69,12 @@ try {
         $user = $result->fetch_assoc();
         $userId = $user['id'];
         
-        // Atualizar Google ID, Device ID e foto de perfil se necessário
         $stmt = $conn->prepare("UPDATE users SET google_id = ?, device_id = ?, email = ?, name = ?, profile_picture = ?, updated_at = NOW() WHERE id = ?");
         $stmt->bind_param("sssssi", $googleId, $deviceId, $email, $name, $profilePicture, $userId);
         $stmt->execute();
         
     } else {
-        // Criar novo usuário com código de convite aleatório
+        // Criar novo usuário
         $inviteCode = 'YM' . strtoupper(substr(bin2hex(random_bytes(4)), 0, 6));
         $stmt = $conn->prepare("INSERT INTO users (google_id, device_id, email, name, profile_picture, invite_code, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())");
         $stmt->bind_param("ssssss", $googleId, $deviceId, $email, $name, $profilePicture, $inviteCode);
@@ -71,39 +82,67 @@ try {
         $userId = $conn->insert_id;
     }
     
-    // Gerar token de autenticação
+    // 6. GERAR MASTER SEED E SESSION SALT (V2)
+    $masterSeed = SecureKeyManager::generateMasterSeed();
+    $sessionSalt = SecureKeyManager::generateSessionSalt();
+    
+    // 7. CRIPTOGRAFAR SEED COM DEVICE_ID
+    $encryptedSeed = SecureKeyManager::encryptSeedWithPassword($masterSeed, $deviceId);
+    
+    // 8. ARMAZENAR SEED E SALT NO BANCO
+    // Converter conexão mysqli para PDO temporariamente
+    $dbHost = getenv('DB_HOST') ?: 'localhost';
+    $dbName = getenv('DB_NAME') ?: 'railway';
+    $dbUser = getenv('DB_USER') ?: 'root';
+    $dbPass = getenv('DB_PASS') ?: '';
+    
+    $pdo = new PDO(
+        "mysql:host=$dbHost;dbname=$dbName;charset=utf8mb4",
+        $dbUser,
+        $dbPass,
+        [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+    );
+    
+    $stored = SecureKeyManager::storeUserSecrets($pdo, $userId, $masterSeed, $sessionSalt);
+    
+    if (!$stored) {
+        error_log("Failed to store user secrets for user $userId");
+    }
+    
+    // 9. GERAR TOKEN DE AUTENTICAÇÃO
     $token = bin2hex(random_bytes(32));
     
-    // Atualizar token no banco
     $stmt = $conn->prepare("UPDATE users SET token = ? WHERE id = ?");
     $stmt->bind_param("si", $token, $userId);
     $stmt->execute();
     
-    // Buscar dados atualizados do usuário
+    // 10. BUSCAR DADOS ATUALIZADOS DO USUÁRIO
     $stmt = $conn->prepare("SELECT id, email, name, device_id, google_id, profile_picture, points FROM users WHERE id = ?");
     $stmt->bind_param("i", $userId);
     $stmt->execute();
     $result = $stmt->get_result();
     $user = $result->fetch_assoc();
     
-    echo json_encode([
-        'success' => true,
-        'data' => [
-            'token' => $token,
-            'user' => [
-                'id' => (int)$user['id'],
-                'email' => $user['email'],
-                'name' => $user['name'],
-                'device_id' => $user['device_id'],
-                'google_id' => $user['google_id'],
-                'profile_picture' => $user['profile_picture'],
-                'points' => (int)$user['points']
-            ]
+    // 11. ENVIAR RESPOSTA COM SEED CRIPTOGRAFADO
+    DecryptMiddleware::sendSuccess([
+        'token' => $token,
+        'encrypted_seed' => $encryptedSeed,  // ⭐ SEED CRIPTOGRAFADO (V2)
+        'session_salt' => $sessionSalt,      // ⭐ SALT DA SESSÃO (V2)
+        'user' => [
+            'id' => (int)$user['id'],
+            'email' => $user['email'],
+            'name' => $user['name'],
+            'device_id' => $user['device_id'],
+            'google_id' => $user['google_id'],
+            'profile_picture' => $user['profile_picture'],
+            'points' => (int)$user['points']
         ]
-    ]);
+    ], true); // Resposta criptografada
+    
+    error_log("Google login V2 successful for user $userId - seed and salt generated");
     
 } catch (Exception $e) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Erro interno: ' . $e->getMessage()]);
+    error_log("Google login error: " . $e->getMessage());
+    DecryptMiddleware::sendError('Erro interno: ' . $e->getMessage(), 500);
 }
 ?>
