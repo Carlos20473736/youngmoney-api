@@ -25,6 +25,7 @@ class SecureMiddleware {
         try {
             // 1. OBTER BODY DA REQUISIÇÃO
             $input = file_get_contents('php://input');
+            error_log("SecureMiddleware: Raw input length: " . strlen($input));
             
             if (empty($input)) {
                 error_log("SecureMiddleware: Empty request body");
@@ -39,6 +40,7 @@ class SecureMiddleware {
             }
             
             // 2. VERIFICAR SE ESTÁ CRIPTOGRAFADO
+            error_log("SecureMiddleware: Encrypted flag: " . ($data['encrypted'] ?? 'not set'));
             if (!isset($data['encrypted']) || $data['encrypted'] !== true) {
                 error_log("SecureMiddleware: Request not encrypted");
                 return false;
@@ -52,6 +54,7 @@ class SecureMiddleware {
             // 3. OBTER HEADERS DE SEGURANÇA
             $timestampWindow = $_SERVER['HTTP_X_TIMESTAMP_WINDOW'] ?? null;
             $signature = $_SERVER['HTTP_X_REQ_SIGNATURE'] ?? null;
+            error_log("SecureMiddleware: Headers - Window: $timestampWindow, Signature: " . substr($signature ?? 'null', 0, 20));
             
             if (!$timestampWindow) {
                 error_log("SecureMiddleware: Missing X-Timestamp-Window header");
