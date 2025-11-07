@@ -1,5 +1,5 @@
 -- Tabela para armazenar tokens XReq (uso único)
-CREATE TABLE IF NOT EXISTS xreq_tokens (
+CREATE TABLE IF NOT EXISTS defaultdb.xreq_tokens (
     id INT AUTO_INCREMENT PRIMARY KEY,
     token VARCHAR(64) NOT NULL UNIQUE,
     user_id INT NULL,
