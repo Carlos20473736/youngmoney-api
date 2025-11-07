@@ -2,6 +2,7 @@
 /**
  * Endpoint para gerar token XReq único
  * Cada token só pode ser usado uma vez
+ * VERSÃO CORRIGIDA - Melhor tratamento de NULL para user_id
  */
 
 header('Content-Type: application/json');
@@ -44,11 +45,20 @@ try {
     
     // Salvar no banco de dados
     $conn = getDbConnection();
-    $stmt = $conn->prepare("INSERT INTO xreq_tokens (token, user_id, ip_address, user_agent) VALUES (?, ?, ?, ?)");
-    $stmt->bind_param("siss", $xreqToken, $userId, $ipAddress, $userAgent);
+    
+    // CORREÇÃO: Usar queries diferentes dependendo se userId é NULL ou não
+    if ($userId === null) {
+        // Quando não há userId, inserir NULL explicitamente
+        $stmt = $conn->prepare("INSERT INTO xreq_tokens (token, user_id, ip_address, user_agent) VALUES (?, NULL, ?, ?)");
+        $stmt->bind_param("sss", $xreqToken, $ipAddress, $userAgent);
+    } else {
+        // Quando há userId, usar bind normal
+        $stmt = $conn->prepare("INSERT INTO xreq_tokens (token, user_id, ip_address, user_agent) VALUES (?, ?, ?, ?)");
+        $stmt->bind_param("siss", $xreqToken, $userId, $ipAddress, $userAgent);
+    }
     
     if (!$stmt->execute()) {
-        throw new Exception("Erro ao gerar XReq token");
+        throw new Exception("Erro ao gerar XReq token: " . $stmt->error);
     }
     
     http_response_code(200);
