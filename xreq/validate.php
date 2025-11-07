@@ -5,8 +5,11 @@
  * Este arquivo deve ser incluído no início de cada endpoint que requer XReq
  * Valida que o token foi enviado, tem formato correto e não foi usado antes
  * 
+ * IMPORTANTE: Aceita tokens duplicados dentro de 2 segundos para lidar com
+ * duplicação de requisições por proxies/load balancers (ex: Railway)
+ * 
  * USO:
- * require_once __DIR__ . '/../xreq/validate_xreq.php';
+ * require_once __DIR__ . '/../xreq/validate.php';
  */
 
 // Função para validar XReq
@@ -39,19 +42,35 @@ function validateXReq() {
         $conn = getDbConnection();
         
         // Verificar se token já foi usado
-        $stmt = $conn->prepare("SELECT id FROM xreq_tokens WHERE token = ?");
+        $stmt = $conn->prepare("SELECT id, created_at FROM xreq_tokens WHERE token = ?");
         $stmt->bind_param("s", $xreqToken);
         $stmt->execute();
         $result = $stmt->get_result();
         
         if ($result->num_rows > 0) {
-            // Token já foi usado - REPLAY ATTACK!
-            http_response_code(403);
-            echo json_encode([
-                'success' => false,
-                'error' => 'Token XReq já foi utilizado (possível replay attack)'
-            ]);
-            exit;
+            // Token já existe - verificar se é duplicata recente ou replay attack
+            $row = $result->fetch_assoc();
+            $createdAt = strtotime($row['created_at']);
+            $now = time();
+            $diff = $now - $createdAt;
+            
+            // Se o token foi criado há menos de 2 segundos, aceitar (duplicata de proxy)
+            if ($diff <= 2) {
+                // Duplicata legítima - aceitar silenciosamente
+                return true;
+            } else {
+                // Token antigo sendo reutilizado - REPLAY ATTACK!
+                http_response_code(403);
+                echo json_encode([
+                    'success' => false,
+                    'error' => 'Token XReq já foi utilizado (possível replay attack)',
+                    'debug' => [
+                        'token_age_seconds' => $diff,
+                        'created_at' => $row['created_at']
+                    ]
+                ]);
+                exit;
+            }
         }
         
         // Obter informações da requisição
