@@ -220,9 +220,8 @@ class SecureMiddleware {
             
             if (!$token) {
                 error_log("SecureMiddleware: No authorization token");
-                // Fallback para DecryptMiddleware
-                require_once 'DecryptMiddleware.php';
-                return DecryptMiddleware::processRequest();
+                self::sendError("Token de autorização não fornecido", 401);
+                exit;
             }
             
             // Buscar userId pelo token
@@ -240,12 +239,11 @@ class SecureMiddleware {
             $user = $result->fetch_assoc();
             $userId = $user['id'];
             
-            // Verificar se tem seed (V2) ou não (V1)
+            // Verificar se tem seed (V2)
             if (empty($user['master_seed'])) {
-                error_log("SecureMiddleware: No seed, falling back to V1");
-                // Fallback para DecryptMiddleware
-                require_once 'DecryptMiddleware.php';
-                return DecryptMiddleware::processRequest();
+                error_log("SecureMiddleware: No seed found for user");
+                self::sendError("Usuário sem seed de segurança. Faça login novamente.", 401);
+                exit;
             }
             
             // Converter conexão mysqli para PDO
@@ -260,9 +258,8 @@ class SecureMiddleware {
             
         } catch (Exception $e) {
             error_log("SecureMiddleware::processRequest: " . $e->getMessage());
-            // Fallback para DecryptMiddleware
-            require_once 'DecryptMiddleware.php';
-            return DecryptMiddleware::processRequest();
+            self::sendError("Erro ao processar requisição: " . $e->getMessage(), 500);
+            exit;
         }
     }
     
@@ -290,9 +287,10 @@ class SecureMiddleware {
             $token = isset($headers['Authorization']) ? str_replace('Bearer ', '', $headers['Authorization']) : null;
             
             if (!$token) {
-                // Fallback para DecryptMiddleware
-                require_once 'DecryptMiddleware.php';
-                DecryptMiddleware::sendSuccess($data, true);
+                error_log("SecureMiddleware: No authorization token for response");
+                header('Content-Type: application/json');
+                http_response_code(401);
+                echo json_encode(['success' => false, 'error' => 'Não autorizado']);
                 return;
             }
             
@@ -304,20 +302,22 @@ class SecureMiddleware {
             $result = $stmt->get_result();
             
             if ($result->num_rows === 0) {
-                // Fallback para DecryptMiddleware
-                require_once 'DecryptMiddleware.php';
-                DecryptMiddleware::sendSuccess($data, true);
+                error_log("SecureMiddleware: Invalid token for response");
+                header('Content-Type: application/json');
+                http_response_code(401);
+                echo json_encode(['success' => false, 'error' => 'Token inválido']);
                 return;
             }
             
             $user = $result->fetch_assoc();
             $userId = $user['id'];
             
-            // Verificar se tem seed (V2) ou não (V1)
+            // Verificar se tem seed (V2)
             if (empty($user['master_seed'])) {
-                // Fallback para DecryptMiddleware
-                require_once 'DecryptMiddleware.php';
-                DecryptMiddleware::sendSuccess($data, true);
+                error_log("SecureMiddleware: No seed for response");
+                header('Content-Type: application/json');
+                http_response_code(401);
+                echo json_encode(['success' => false, 'error' => 'Usuário sem seed. Faça login novamente.']);
                 return;
             }
             
@@ -338,9 +338,9 @@ class SecureMiddleware {
             
         } catch (Exception $e) {
             error_log("SecureMiddleware::sendSuccessAuto: " . $e->getMessage());
-            // Fallback para DecryptMiddleware
-            require_once 'DecryptMiddleware.php';
-            DecryptMiddleware::sendSuccess($data, true);
+            header('Content-Type: application/json');
+            http_response_code(500);
+            echo json_encode(['success' => false, 'error' => 'Erro ao enviar resposta']);
         }
     }
 }
