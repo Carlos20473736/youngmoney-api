@@ -11,6 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once __DIR__ . '/../database.php';
 require_once __DIR__ . '/../xreq/validate.php';
+require_once __DIR__ . '/../includes/DecryptMiddleware.php';
 
 try {
     // Validar XReq token
@@ -25,7 +26,8 @@ try {
         exit;
     }
     
-    $input = json_decode(file_get_contents('php://input'), true);
+    // Processar requisição (descriptografa automaticamente se necessário)
+    $input = DecryptMiddleware::processRequest();
     
     if (!isset($input['points'])) {
         http_response_code(400 );
@@ -71,14 +73,12 @@ try {
     $stmt->bind_param("iis", $userId, $points, $description);
     $stmt->execute();
     
-    echo json_encode([
-        'success' => true,
-        'data' => [
-            'points_added' => $points,
-            'daily_points' => $points,
-            'total_points' => $newPoints
-        ]
-    ]);
+    // Enviar resposta criptografada
+    DecryptMiddleware::sendSuccess([
+        'points_added' => $points,
+        'daily_points' => $points,
+        'total_points' => $newPoints
+    ], true);
     
 } catch (Exception $e) {
     http_response_code(500 );
