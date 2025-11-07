@@ -74,7 +74,7 @@ try {
     $stmt->execute();
     
     // Enviar resposta criptografada
-    SecureMiddleware::sendSuccess([
+    SecureMiddleware::sendSuccessAuto([
         'points_added' => $points,
         'daily_points' => $points,
         'total_points' => $newPoints

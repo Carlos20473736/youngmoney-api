@@ -42,7 +42,7 @@ try {
     $user = $result->fetch_assoc();
     
     // Enviar resposta criptografada
-    SecureMiddleware::sendSuccess([
+    SecureMiddleware::sendSuccessAuto([
         'name' => $user['name'],
         'photo_url' => $user['profile_picture'] ?? '',
         'balance' => (int)$user['points'],

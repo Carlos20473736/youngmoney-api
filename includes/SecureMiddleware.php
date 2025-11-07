@@ -203,6 +203,146 @@ class SecureMiddleware {
             'data' => $data
         ], $pdo, $userId);
     }
+    
+    /**
+     * Processa requisição automaticamente (compatível com DecryptMiddleware)
+     * Extrai token do header Authorization e busca userId
+     * 
+     * @return array|false Dados descriptografados ou false
+     */
+    public static function processRequest() {
+        require_once __DIR__ . '/../database.php';
+        
+        try {
+            // Obter token do header
+            $headers = getallheaders();
+            $token = isset($headers['Authorization']) ? str_replace('Bearer ', '', $headers['Authorization']) : null;
+            
+            if (!$token) {
+                error_log("SecureMiddleware: No authorization token");
+                // Fallback para DecryptMiddleware
+                require_once 'DecryptMiddleware.php';
+                return DecryptMiddleware::processRequest();
+            }
+            
+            // Buscar userId pelo token
+            $conn = getDbConnection();
+            $stmt = $conn->prepare("SELECT id, master_seed FROM users WHERE token = ?");
+            $stmt->bind_param("s", $token);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            
+            if ($result->num_rows === 0) {
+                error_log("SecureMiddleware: Invalid token");
+                return false;
+            }
+            
+            $user = $result->fetch_assoc();
+            $userId = $user['id'];
+            
+            // Verificar se tem seed (V2) ou não (V1)
+            if (empty($user['master_seed'])) {
+                error_log("SecureMiddleware: No seed, falling back to V1");
+                // Fallback para DecryptMiddleware
+                require_once 'DecryptMiddleware.php';
+                return DecryptMiddleware::processRequest();
+            }
+            
+            // Converter conexão mysqli para PDO
+            $pdo = new PDO(
+                "mysql:host={$conn->host_info};dbname=" . getenv('DB_NAME'),
+                getenv('DB_USER'),
+                getenv('DB_PASS')
+            );
+            
+            // Processar com V2
+            return self::processSecureRequest($pdo, $userId);
+            
+        } catch (Exception $e) {
+            error_log("SecureMiddleware::processRequest: " . $e->getMessage());
+            // Fallback para DecryptMiddleware
+            require_once 'DecryptMiddleware.php';
+            return DecryptMiddleware::processRequest();
+        }
+    }
+    
+    /**
+     * Envia resposta de sucesso automaticamente (compatível com DecryptMiddleware)
+     * 
+     * @param mixed $data Dados de sucesso
+     * @param bool $encrypt Se deve criptografar (true) ou não (false)
+     */
+    public static function sendSuccessAuto($data, $encrypt = true) {
+        require_once __DIR__ . '/../database.php';
+        
+        if (!$encrypt) {
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => true,
+                'data' => $data
+            ]);
+            return;
+        }
+        
+        try {
+            // Obter token do header
+            $headers = getallheaders();
+            $token = isset($headers['Authorization']) ? str_replace('Bearer ', '', $headers['Authorization']) : null;
+            
+            if (!$token) {
+                // Fallback para DecryptMiddleware
+                require_once 'DecryptMiddleware.php';
+                DecryptMiddleware::sendSuccess($data, true);
+                return;
+            }
+            
+            // Buscar userId pelo token
+            $conn = getDbConnection();
+            $stmt = $conn->prepare("SELECT id, master_seed FROM users WHERE token = ?");
+            $stmt->bind_param("s", $token);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            
+            if ($result->num_rows === 0) {
+                // Fallback para DecryptMiddleware
+                require_once 'DecryptMiddleware.php';
+                DecryptMiddleware::sendSuccess($data, true);
+                return;
+            }
+            
+            $user = $result->fetch_assoc();
+            $userId = $user['id'];
+            
+            // Verificar se tem seed (V2) ou não (V1)
+            if (empty($user['master_seed'])) {
+                // Fallback para DecryptMiddleware
+                require_once 'DecryptMiddleware.php';
+                DecryptMiddleware::sendSuccess($data, true);
+                return;
+            }
+            
+            // Converter conexão mysqli para PDO
+            $pdo = new PDO(
+                "mysql:host=" . getenv('DB_HOST') . ";port=" . getenv('DB_PORT') . ";dbname=" . getenv('DB_NAME'),
+                getenv('DB_USER'),
+                getenv('DB_PASS'),
+                [
+                    PDO::MYSQL_ATTR_SSL_CA => true,
+                    PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT => false,
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+                ]
+            );
+            
+            // Enviar com V2
+            self::sendSuccess($data, $pdo, $userId);
+            
+        } catch (Exception $e) {
+            error_log("SecureMiddleware::sendSuccessAuto: " . $e->getMessage());
+            // Fallback para DecryptMiddleware
+            require_once 'DecryptMiddleware.php';
+            DecryptMiddleware::sendSuccess($data, true);
+        }
+    }
 }
 
 ?>

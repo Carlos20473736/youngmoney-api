@@ -41,7 +41,7 @@ try {
     }
     
     // Por enquanto, retornar lista vazia (criar tabela notifications depois)
-    SecureMiddleware::sendSuccess([
+    SecureMiddleware::sendSuccessAuto([
         'notifications' => [],
         'unread_count' => 0
     ], true);
