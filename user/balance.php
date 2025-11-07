@@ -11,6 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once __DIR__ . '/../database.php';
 require_once __DIR__ . '/../xreq/validate.php';
+require_once __DIR__ . '/../includes/SecureMiddleware.php';
 
 try {
     // Validar XReq token
@@ -27,7 +28,8 @@ try {
     
     $conn = getDbConnection();
     
-    $stmt = $conn->prepare("SELECT id, points FROM users WHERE token = ?");
+    // Buscar usuário e verificar se tem seed (V2)
+    $stmt = $conn->prepare("SELECT id, points, master_seed FROM users WHERE token = ?");
     $stmt->bind_param("s", $token);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -39,14 +41,35 @@ try {
     }
     
     $user = $result->fetch_assoc();
+    $userId = $user['id'];
     
-    echo json_encode([
-        'success' => true,
-        'data' => [
-            'balance' => (int)$user['points'],
-            'currency' => 'points'
-        ]
-    ]);
+    $responseData = [
+        'balance' => (int)$user['points'],
+        'currency' => 'points'
+    ];
+    
+    // Se tiver seed, usar criptografia V2
+    if (!empty($user['master_seed'])) {
+        // Converter conexão mysqli para PDO
+        $pdo = new PDO(
+            "mysql:host=" . getenv('DB_HOST') . ";port=" . getenv('DB_PORT') . ";dbname=" . getenv('DB_NAME'),
+            getenv('DB_USER'),
+            getenv('DB_PASSWORD'),
+            [
+                PDO::MYSQL_ATTR_SSL_CA => true,
+                PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT => false,
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+            ]
+        );
+        
+        SecureMiddleware::sendSecureResponse($responseData, $pdo, $userId);
+    } else {
+        // Fallback: resposta sem criptografia (usuários antigos)
+        echo json_encode([
+            'success' => true,
+            'data' => $responseData
+        ]);
+    }
     
 } catch (Exception $e) {
     http_response_code(500);
