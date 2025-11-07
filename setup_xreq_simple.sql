@@ -1,7 +1,7 @@
 -- Script SQL para criar tabela XReq (versão simplificada)
 -- Execute este script no seu banco de dados
 
-CREATE TABLE IF NOT EXISTS xreq_tokens (
+CREATE TABLE IF NOT EXISTS defaultdb.xreq_tokens (
     id INT AUTO_INCREMENT PRIMARY KEY,
     token VARCHAR(64) NOT NULL UNIQUE,
     user_id INT NULL,
