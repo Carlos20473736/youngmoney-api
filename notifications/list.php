@@ -11,7 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once __DIR__ . '/../database.php';
 require_once __DIR__ . '/../xreq/validate.php';
-require_once __DIR__ . '/../includes/DecryptMiddleware.php';
+require_once __DIR__ . '/../includes/SecureMiddleware.php';
 
 try {
     // Validar XReq token
@@ -41,7 +41,7 @@ try {
     }
     
     // Por enquanto, retornar lista vazia (criar tabela notifications depois)
-    DecryptMiddleware::sendSuccess([
+    SecureMiddleware::sendSuccess([
         'notifications' => [],
         'unread_count' => 0
     ], true);

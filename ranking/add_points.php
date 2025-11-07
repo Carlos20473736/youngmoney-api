@@ -11,7 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once __DIR__ . '/../database.php';
 require_once __DIR__ . '/../xreq/validate.php';
-require_once __DIR__ . '/../includes/DecryptMiddleware.php';
+require_once __DIR__ . '/../includes/SecureMiddleware.php';
 
 try {
     // Validar XReq token
@@ -27,7 +27,7 @@ try {
     }
     
     // Processar requisição (descriptografa automaticamente se necessário)
-    $input = DecryptMiddleware::processRequest();
+    $input = SecureMiddleware::processRequest();
     
     if (!isset($input['points'])) {
         http_response_code(400 );
@@ -74,7 +74,7 @@ try {
     $stmt->execute();
     
     // Enviar resposta criptografada
-    DecryptMiddleware::sendSuccess([
+    SecureMiddleware::sendSuccess([
         'points_added' => $points,
         'daily_points' => $points,
         'total_points' => $newPoints

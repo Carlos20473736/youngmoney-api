@@ -11,7 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once __DIR__ . '/../database.php';
 require_once __DIR__ . '/../xreq/validate.php';
-require_once __DIR__ . '/../includes/DecryptMiddleware.php';
+require_once __DIR__ . '/../includes/SecureMiddleware.php';
 
 try {
     // Validar XReq token
@@ -42,7 +42,7 @@ try {
     $user = $result->fetch_assoc();
     
     // Enviar resposta criptografada
-    DecryptMiddleware::sendSuccess([
+    SecureMiddleware::sendSuccess([
         'name' => $user['name'],
         'photo_url' => $user['profile_picture'] ?? '',
         'balance' => (int)$user['points'],
