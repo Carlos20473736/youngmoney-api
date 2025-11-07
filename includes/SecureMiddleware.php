@@ -248,9 +248,14 @@ class SecureMiddleware {
             
             // Converter conexão mysqli para PDO
             $pdo = new PDO(
-                "mysql:host={$conn->host_info};dbname=" . getenv('DB_NAME'),
+                "mysql:host=" . getenv('DB_HOST') . ";port=" . getenv('DB_PORT') . ";dbname=" . getenv('DB_NAME'),
                 getenv('DB_USER'),
-                getenv('DB_PASS')
+                getenv('DB_PASS'),
+                [
+                    PDO::MYSQL_ATTR_SSL_CA => true,
+                    PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT => false,
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+                ]
             );
             
             // Processar com V2
