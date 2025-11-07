@@ -39,8 +39,9 @@ class CryptoManager {
             $iv = substr($combined, 0, 16);
             $encrypted = substr($combined, 16);
             
-            // Derivar chave de 32 bytes usando SHA-256
-            $key = hash('sha256', self::$SECRET_KEY, true);
+            // Usar chave diretamente (mesma lógica do Android)
+            // Android usa SECRET_KEY.getBytes() diretamente
+            $key = self::$SECRET_KEY;
             
             // Descriptografar usando AES-256-CBC
             $decrypted = openssl_decrypt(
@@ -72,8 +73,9 @@ class CryptoManager {
      */
     public static function encrypt($data) {
         try {
-            // Derivar chave de 32 bytes usando SHA-256
-            $key = hash('sha256', self::$SECRET_KEY, true);
+            // Usar chave diretamente (mesma lógica do Android)
+            // Android usa SECRET_KEY.getBytes() diretamente
+            $key = self::$SECRET_KEY;
             
             // Gerar IV aleatório (16 bytes)
             $iv = openssl_random_pseudo_bytes(16);
