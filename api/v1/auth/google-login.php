@@ -92,15 +92,20 @@ try {
     // 8. ARMAZENAR SEED E SALT NO BANCO
     // Converter conexão mysqli para PDO temporariamente
     $dbHost = getenv('DB_HOST') ?: 'localhost';
+    $dbPort = getenv('DB_PORT') ?: '3306';
     $dbName = getenv('DB_NAME') ?: 'railway';
     $dbUser = getenv('DB_USER') ?: 'root';
-    $dbPass = getenv('DB_PASS') ?: '';
+    $dbPass = getenv('DB_PASSWORD') ?: '';
     
     $pdo = new PDO(
-        "mysql:host=$dbHost;dbname=$dbName;charset=utf8mb4",
+        "mysql:host=$dbHost;port=$dbPort;dbname=$dbName;charset=utf8mb4",
         $dbUser,
         $dbPass,
-        [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+        [
+            PDO::MYSQL_ATTR_SSL_CA => true,
+            PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT => false,
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+        ]
     );
     
     $stored = SecureKeyManager::storeUserSecrets($pdo, $userId, $masterSeed, $sessionSalt);
