@@ -48,28 +48,11 @@ try {
         'currency' => 'points'
     ];
     
-    // Se tiver seed, usar criptografia V2
-    if (!empty($user['master_seed'])) {
-        // Converter conexão mysqli para PDO
-        $pdo = new PDO(
-            "mysql:host=" . getenv('DB_HOST') . ";port=" . getenv('DB_PORT') . ";dbname=" . getenv('DB_NAME'),
-            getenv('DB_USER'),
-            getenv('DB_PASSWORD'),
-            [
-                PDO::MYSQL_ATTR_SSL_CA => true,
-                PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT => false,
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
-            ]
-        );
-        
-        SecureMiddleware::sendSecureResponse($responseData, $pdo, $userId);
-    } else {
-        // Fallback: resposta sem criptografia (usuários antigos)
-        echo json_encode([
-            'success' => true,
-            'data' => $responseData
-        ]);
-    }
+    // SEMPRE retornar JSON simples (sem criptografia)
+    echo json_encode([
+        'success' => true,
+        'data' => $responseData
+    ]);
     
 } catch (Exception $e) {
     http_response_code(500);
