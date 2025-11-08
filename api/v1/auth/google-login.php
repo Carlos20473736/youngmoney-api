@@ -142,7 +142,7 @@ try {
             'profile_picture' => $user['profile_picture'],
             'points' => (int)$user['points']
         ]
-    ], true); // Resposta criptografada
+    ], false); // Resposta JSON simples (sem criptografia)
     
     error_log("Google login V2 successful for user $userId - seed and salt generated");
     
