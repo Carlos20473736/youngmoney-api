@@ -71,7 +71,8 @@ try {
     $stmt->execute();
     
     // Salvar no histórico
-    $description = isset($input['description']) ? $input['description'] : 'Pontos adicionados';
+    // Aceitar tanto 'description' quanto 'activity' para compatibilidade
+    $description = isset($input['description']) ? $input['description'] : (isset($input['activity']) ? $input['activity'] : 'Pontos adicionados');
     $stmt = $conn->prepare("INSERT INTO points_history (user_id, points, description, created_at) VALUES (?, ?, ?, NOW())");
     $stmt->bind_param("iis", $userId, $points, $description);
     $stmt->execute();
