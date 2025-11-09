@@ -29,13 +29,20 @@ try {
     }
     
     // Obter período ativo
-    $stmt = $conn->prepare("CALL get_active_period(?)");
-    $stmt->bind_param("s", $periodType);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $periodRow = $result->fetch_assoc();
-    $periodId = $periodRow['period_id'];
-    $stmt->close();
+    $periodId = null;
+    if ($conn->multi_query("CALL get_active_period('$periodType')")) {
+        do {
+            if ($result = $conn->store_result()) {
+                $periodRow = $result->fetch_assoc();
+                $periodId = $periodRow['period_id'];
+                $result->free();
+            }
+        } while ($conn->more_results() && $conn->next_result());
+    }
+    
+    if (!$periodId) {
+        throw new Exception('Não foi possível obter período ativo');
+    }
     
     // Buscar informações do período
     $stmt = $conn->prepare("SELECT start_date, end_date FROM ranking_periods WHERE id = ?");
