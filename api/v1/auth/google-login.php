@@ -29,13 +29,12 @@ try {
     }
     
     // 2. VALIDAR DADOS
-    if (!isset($data['google_token']) || !isset($data['device_id'])) {
-        DecryptMiddleware::sendError('Google token e device_id são obrigatórios');
+    if (!isset($data['google_token'])) {
+        DecryptMiddleware::sendError('Google token é obrigatório');
         exit;
     }
     
     $googleToken = $data['google_token'];
-    $deviceId = $data['device_id'];
     
     // 3. VERIFICAR TOKEN DO GOOGLE
     $tokenParts = explode('.', $googleToken);
@@ -59,8 +58,8 @@ try {
     $conn = getDbConnection();
     
     // 5. VERIFICAR SE USUÁRIO JÁ EXISTE
-    $stmt = $conn->prepare("SELECT * FROM users WHERE google_id = ? OR device_id = ?");
-    $stmt->bind_param("ss", $googleId, $deviceId);
+    $stmt = $conn->prepare("SELECT * FROM users WHERE google_id = ?");
+    $stmt->bind_param("s", $googleId);
     $stmt->execute();
     $result = $stmt->get_result();
     
@@ -69,15 +68,15 @@ try {
         $user = $result->fetch_assoc();
         $userId = $user['id'];
         
-        $stmt = $conn->prepare("UPDATE users SET google_id = ?, device_id = ?, email = ?, name = ?, profile_picture = ?, updated_at = NOW() WHERE id = ?");
-        $stmt->bind_param("sssssi", $googleId, $deviceId, $email, $name, $profilePicture, $userId);
+        $stmt = $conn->prepare("UPDATE users SET google_id = ?, email = ?, name = ?, profile_picture = ?, updated_at = NOW() WHERE id = ?");
+        $stmt->bind_param("ssssi", $googleId, $email, $name, $profilePicture, $userId);
         $stmt->execute();
         
     } else {
         // Criar novo usuário
         $inviteCode = 'YM' . strtoupper(substr(bin2hex(random_bytes(4)), 0, 6));
-        $stmt = $conn->prepare("INSERT INTO users (google_id, device_id, email, name, profile_picture, invite_code, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())");
-        $stmt->bind_param("ssssss", $googleId, $deviceId, $email, $name, $profilePicture, $inviteCode);
+        $stmt = $conn->prepare("INSERT INTO users (google_id, email, name, profile_picture, invite_code, created_at) VALUES (?, ?, ?, ?, ?, NOW())");
+        $stmt->bind_param("sssss", $googleId, $email, $name, $profilePicture, $inviteCode);
         $stmt->execute();
         $userId = $conn->insert_id;
     }
@@ -86,8 +85,8 @@ try {
     $masterSeed = SecureKeyManager::generateMasterSeed();
     $sessionSalt = SecureKeyManager::generateSessionSalt();
     
-    // 7. CRIPTOGRAFAR SEED COM DEVICE_ID
-    $encryptedSeed = SecureKeyManager::encryptSeedWithPassword($masterSeed, $deviceId);
+    // 7. CRIPTOGRAFAR SEED COM EMAIL DO GOOGLE
+    $encryptedSeed = SecureKeyManager::encryptSeedWithPassword($masterSeed, $email);
     
     // 8. ARMAZENAR SEED E SALT NO BANCO
     // Converter conexão mysqli para PDO temporariamente
@@ -122,7 +121,7 @@ try {
     $stmt->execute();
     
     // 10. BUSCAR DADOS ATUALIZADOS DO USUÁRIO
-    $stmt = $conn->prepare("SELECT id, email, name, device_id, google_id, profile_picture, points FROM users WHERE id = ?");
+    $stmt = $conn->prepare("SELECT id, email, name, google_id, profile_picture, points FROM users WHERE id = ?");
     $stmt->bind_param("i", $userId);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -137,7 +136,6 @@ try {
             'id' => (int)$user['id'],
             'email' => $user['email'],
             'name' => $user['name'],
-            'device_id' => $user['device_id'],
             'google_id' => $user['google_id'],
             'profile_picture' => $user['profile_picture'],
             'points' => (int)$user['points']
