@@ -1,4 +1,8 @@
 <?php
+// Desabilitar exibição de erros PHP (evita HTML no output)
+ini_set('display_errors', '0');
+error_reporting(E_ALL);
+
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, OPTIONS');
@@ -29,8 +33,17 @@ try {
     }
     
     // Obter período ativo
+    // Limpar resultados pendentes antes de multi_query
+    while ($conn->more_results()) {
+        $conn->next_result();
+        if ($res = $conn->store_result()) {
+            $res->free();
+        }
+    }
+    
     $periodId = null;
-    if ($conn->multi_query("CALL get_active_period('$periodType')")) {
+    $safeType = $conn->real_escape_string($periodType);
+    if ($conn->multi_query("CALL get_active_period('$safeType')")) {
         do {
             if ($result = $conn->store_result()) {
                 $periodRow = $result->fetch_assoc();
