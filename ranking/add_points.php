@@ -79,13 +79,17 @@ try {
         
         // 3. Obter período ativo (diário por padrão)
         $periodType = isset($input['period_type']) ? $input['period_type'] : 'daily';
-        $stmt = $conn->prepare("CALL get_active_period(?)");
-        $stmt->bind_param("s", $periodType);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $periodRow = $result->fetch_assoc();
-        $periodId = $periodRow['period_id'];
-        $stmt->close();
+        
+        // Chamar stored procedure e pegar resultado
+        if ($conn->multi_query("CALL get_active_period('$periodType')")) {
+            do {
+                if ($result = $conn->store_result()) {
+                    $periodRow = $result->fetch_assoc();
+                    $periodId = $periodRow['period_id'];
+                    $result->free();
+                }
+            } while ($conn->more_results() && $conn->next_result());
+        }
         
         // 4. Atualizar pontos do ranking do período
         // Usar INSERT ... ON DUPLICATE KEY UPDATE para criar ou atualizar
