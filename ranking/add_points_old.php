@@ -1,8 +1,4 @@
 <?php
-// Desabilitar exibição de erros PHP (evita HTML no output)
-ini_set('display_errors', '0');
-error_reporting(E_ALL);
-
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST, OPTIONS');
@@ -84,31 +80,15 @@ try {
         // 3. Obter período ativo (diário por padrão)
         $periodType = isset($input['period_type']) ? $input['period_type'] : 'daily';
         
-        // Limpar resultados pendentes antes de multi_query
-        while ($conn->more_results()) {
-            $conn->next_result();
-            if ($res = $conn->store_result()) {
-                $res->free();
-            }
-        }
-        
         // Chamar stored procedure e pegar resultado
-        $periodId = null;
-        $safeType = $conn->real_escape_string($periodType);
-        
-        if ($conn->multi_query("CALL get_active_period('$safeType')")) {
+        if ($conn->multi_query("CALL get_active_period('$periodType')")) {
             do {
                 if ($result = $conn->store_result()) {
-                    if ($periodRow = $result->fetch_assoc()) {
-                        $periodId = $periodRow['period_id'];
-                    }
+                    $periodRow = $result->fetch_assoc();
+                    $periodId = $periodRow['period_id'];
                     $result->free();
                 }
             } while ($conn->more_results() && $conn->next_result());
-        }
-        
-        if (!$periodId) {
-            throw new Exception('Não foi possível obter período ativo');
         }
         
         // 4. Atualizar pontos do ranking do período
