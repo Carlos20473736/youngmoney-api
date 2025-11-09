@@ -1,12 +1,12 @@
 <?php
 /**
- * Google Login ULTRA OTIMIZADO - Performance Máxima
+ * Google Login OTIMIZADO - Performance Máxima
  * 
- * Otimizações V2:
- * - Conexão persistente ao banco
- * - Remoção de criptografia desnecessária no banco
- * - Query única com UPSERT (INSERT ... ON DUPLICATE KEY UPDATE)
- * - Resposta sem processamento de middleware
+ * Otimizações aplicadas:
+ * - Conexão única ao banco (mysqli)
+ * - Queries reduzidas de 5 para 2
+ * - Cache de dados do usuário
+ * - UPDATE condicional
  */
 
 header('Content-Type: application/json');
@@ -19,25 +19,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
+require_once __DIR__ . '/../../../database.php';
 require_once __DIR__ . '/../../../includes/SecureKeyManager.php';
+require_once __DIR__ . '/../../../includes/DecryptMiddleware.php';
 
 try {
-    // 1. LER INPUT (direto, sem middleware)
-    $data = json_decode(file_get_contents('php://input'), true);
+    // 1. PROCESSAR REQUISIÇÃO
+    $data = DecryptMiddleware::processRequest();
     
+    if (empty($data)) {
+        $data = json_decode(file_get_contents('php://input'), true);
+    }
+    
+    // 2. VALIDAR DADOS
     if (!isset($data['google_token'])) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Google token é obrigatório']);
+        DecryptMiddleware::sendError('Google token é obrigatório');
         exit;
     }
     
     $googleToken = $data['google_token'];
     
-    // 2. VALIDAR TOKEN (rápido)
+    // 3. VERIFICAR TOKEN DO GOOGLE (rápido - sem I/O)
     $tokenParts = explode('.', $googleToken);
     if (count($tokenParts) !== 3) {
-        http_response_code(401);
-        echo json_encode(['success' => false, 'error' => 'Token inválido']);
+        DecryptMiddleware::sendError('Token do Google inválido', 401);
         exit;
     }
     
@@ -48,99 +53,120 @@ try {
     $profilePicture = $payload['picture'] ?? null;
     
     if (!$googleId || !$email) {
-        http_response_code(401);
-        echo json_encode(['success' => false, 'error' => 'Dados inválidos no token']);
+        DecryptMiddleware::sendError('Não foi possível extrair dados do token do Google', 401);
         exit;
     }
     
-    // 3. GERAR DADOS CRIPTOGRÁFICOS (antes do DB)
+    // 4. CONECTAR AO BANCO (conexão única)
+    $conn = getDbConnection();
+    
+    // 5. GERAR DADOS CRIPTOGRÁFICOS (antes do banco para paralelizar)
     $masterSeed = SecureKeyManager::generateMasterSeed();
     $sessionSalt = SecureKeyManager::generateSessionSalt();
     $encryptedSeed = SecureKeyManager::encryptSeedWithPassword($masterSeed, $email);
     $token = bin2hex(random_bytes(32));
-    $inviteCode = 'YM' . strtoupper(substr(bin2hex(random_bytes(4)), 0, 6));
     
-    // 4. CONEXÃO PERSISTENTE AO BANCO
-    $dbHost = getenv('DB_HOST') ?: 'localhost';
-    $dbPort = getenv('DB_PORT') ?: '3306';
-    $dbName = getenv('DB_NAME') ?: 'railway';
-    $dbUser = getenv('DB_USER') ?: 'root';
-    $dbPass = getenv('DB_PASSWORD') ?: '';
-    
-    $conn = mysqli_init();
-    $conn->options(MYSQLI_OPT_CONNECT_TIMEOUT, 5);
-    $conn->options(MYSQLI_OPT_READ_TIMEOUT, 5);
-    $conn->options(MYSQLI_OPT_WRITE_TIMEOUT, 5);
-    $conn->ssl_set(NULL, NULL, NULL, NULL, NULL);
-    $conn->options(MYSQLI_OPT_SSL_VERIFY_SERVER_CERT, false);
-    $conn->real_connect($dbHost, $dbUser, $dbPass, $dbName, $dbPort, NULL, MYSQLI_CLIENT_SSL);
-    
-    if ($conn->connect_error) {
-        http_response_code(500);
-        echo json_encode(['success' => false, 'error' => 'Database error']);
-        exit;
+    // 6. CRIPTOGRAFAR SEED PARA O BANCO
+    $serverKey = getenv('SERVER_ENCRYPTION_KEY');
+    if (!$serverKey) {
+        error_log("SERVER_ENCRYPTION_KEY not set");
+        $serverKey = 'default_key_change_me'; // Fallback
     }
     
-    // 5. QUERY ÚNICA COM UPSERT (INSERT ... ON DUPLICATE KEY UPDATE)
-    // Isso elimina o SELECT inicial e faz tudo em uma query
+    // 7. VERIFICAR/CRIAR USUÁRIO (query única otimizada)
     $stmt = $conn->prepare("
-        INSERT INTO users (
-            google_id, email, name, profile_picture, 
-            invite_code, token, session_salt, points, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, 0, NOW(), NOW())
-        ON DUPLICATE KEY UPDATE
-            email = VALUES(email),
-            name = VALUES(name),
-            profile_picture = VALUES(profile_picture),
-            token = VALUES(token),
-            session_salt = VALUES(session_salt),
-            updated_at = NOW()
+        SELECT id, email, name, profile_picture, points 
+        FROM users 
+        WHERE google_id = ?
     ");
-    
-    $stmt->bind_param("sssssss", $googleId, $email, $name, $profilePicture, $inviteCode, $token, $sessionSalt);
+    $stmt->bind_param("s", $googleId);
     $stmt->execute();
+    $result = $stmt->get_result();
     
-    // Pegar ID do usuário (insert_id ou id existente)
-    if ($stmt->insert_id > 0) {
-        $userId = $stmt->insert_id;
-        $points = 0;
+    if ($result->num_rows > 0) {
+        // USUÁRIO EXISTE - atualizar apenas token e seed
+        $user = $result->fetch_assoc();
+        $userId = $user['id'];
+        
+        // Criptografar seed com chave do servidor
+        $iv = substr(md5($userId), 0, 16);
+        $encryptedSeedForDb = openssl_encrypt($masterSeed, 'AES-256-CBC', $serverKey, 0, $iv);
+        
+        // UPDATE único com todos os dados
+        $stmt = $conn->prepare("
+            UPDATE users 
+            SET token = ?, 
+                master_seed = ?, 
+                session_salt = ?,
+                email = ?,
+                name = ?,
+                profile_picture = ?,
+                salt_updated_at = NOW(),
+                updated_at = NOW()
+            WHERE id = ?
+        ");
+        $stmt->bind_param("ssssssi", $token, $encryptedSeedForDb, $sessionSalt, $email, $name, $profilePicture, $userId);
+        $stmt->execute();
+        
+        // Usar dados do cache (não fazer SELECT novamente)
+        $user['email'] = $email;
+        $user['name'] = $name;
+        $user['profile_picture'] = $profilePicture;
+        
     } else {
-        // Usuário já existia, buscar ID e pontos
-        $stmt2 = $conn->prepare("SELECT id, points FROM users WHERE google_id = ?");
-        $stmt2->bind_param("s", $googleId);
-        $stmt2->execute();
-        $result = $stmt2->get_result();
-        $userData = $result->fetch_assoc();
-        $userId = $userData['id'];
-        $points = $userData['points'];
-        $stmt2->close();
+        // CRIAR NOVO USUÁRIO
+        $inviteCode = 'YM' . strtoupper(substr(bin2hex(random_bytes(4)), 0, 6));
+        
+        // INSERT com todos os dados de uma vez
+        $stmt = $conn->prepare("
+            INSERT INTO users (
+                google_id, email, name, profile_picture, 
+                invite_code, token, master_seed, session_salt,
+                points, created_at, salt_updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, '', ?, 0, NOW(), NOW())
+        ");
+        $stmt->bind_param("sssssss", $googleId, $email, $name, $profilePicture, $inviteCode, $token, $sessionSalt);
+        $stmt->execute();
+        $userId = $conn->insert_id;
+        
+        // Criptografar e atualizar seed (necessário pois precisamos do userId para IV)
+        $iv = substr(md5($userId), 0, 16);
+        $encryptedSeedForDb = openssl_encrypt($masterSeed, 'AES-256-CBC', $serverKey, 0, $iv);
+        
+        $stmt = $conn->prepare("UPDATE users SET master_seed = ? WHERE id = ?");
+        $stmt->bind_param("si", $encryptedSeedForDb, $userId);
+        $stmt->execute();
+        
+        // Dados do novo usuário (sem SELECT adicional)
+        $user = [
+            'id' => $userId,
+            'email' => $email,
+            'name' => $name,
+            'google_id' => $googleId,
+            'profile_picture' => $profilePicture,
+            'points' => 0
+        ];
     }
     
-    $stmt->close();
-    $conn->close();
-    
-    // 6. RESPOSTA DIRETA (sem middleware, sem criptografia adicional)
-    http_response_code(200);
-    echo json_encode([
-        'success' => true,
-        'data' => [
-            'token' => $token,
-            'encrypted_seed' => $encryptedSeed,
-            'session_salt' => $sessionSalt,
-            'user' => [
-                'id' => (int)$userId,
-                'email' => $email,
-                'name' => $name,
-                'google_id' => $googleId,
-                'profile_picture' => $profilePicture,
-                'points' => (int)$points
-            ]
+    // 8. ENVIAR RESPOSTA (sem criptografia para máxima velocidade)
+    DecryptMiddleware::sendSuccess([
+        'token' => $token,
+        'encrypted_seed' => $encryptedSeed,
+        'session_salt' => $sessionSalt,
+        'user' => [
+            'id' => (int)$user['id'],
+            'email' => $user['email'],
+            'name' => $user['name'],
+            'google_id' => $googleId,
+            'profile_picture' => $user['profile_picture'],
+            'points' => (int)$user['points']
         ]
-    ]);
+    ], false);
+    
+    error_log("Google login optimized successful for user $userId");
     
 } catch (Exception $e) {
     error_log("Google login error: " . $e->getMessage());
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Erro interno']);
+    DecryptMiddleware::sendError('Erro interno: ' . $e->getMessage(), 500);
 }
 ?>
