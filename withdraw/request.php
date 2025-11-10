@@ -30,7 +30,11 @@ try {
     
     $input = json_decode(file_get_contents('php://input'), true);
     
+    // Log para debug
+    error_log("[WITHDRAW] Input recebido: " . json_encode($input));
+    
     if (!isset($input['amount']) || !isset($input['pixKeyType']) || !isset($input['pixKey'])) {
+        error_log("[WITHDRAW] Dados incompletos - amount: " . (isset($input['amount']) ? 'OK' : 'FALTA') . ", pixKeyType: " . (isset($input['pixKeyType']) ? 'OK' : 'FALTA') . ", pixKey: " . (isset($input['pixKey']) ? 'OK' : 'FALTA'));
         http_response_code(400);
         echo json_encode(['success' => false, 'error' => 'Dados incompletos']);
         exit;
