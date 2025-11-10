@@ -44,19 +44,24 @@ try {
         $results[] = "Erro ao criar 'point_transactions': " . $conn->error;
     }
     
-    // Criar índices
+    // Criar índices (ignorar erros se já existirem)
     $indexes = [
-        "CREATE INDEX IF NOT EXISTS idx_withdrawals_user_id ON withdrawals(user_id)",
-        "CREATE INDEX IF NOT EXISTS idx_withdrawals_status ON withdrawals(status)",
-        "CREATE INDEX IF NOT EXISTS idx_point_transactions_user_id ON point_transactions(user_id)",
-        "CREATE INDEX IF NOT EXISTS idx_point_transactions_type ON point_transactions(type)"
+        "CREATE INDEX idx_withdrawals_user_id ON withdrawals(user_id)",
+        "CREATE INDEX idx_withdrawals_status ON withdrawals(status)",
+        "CREATE INDEX idx_point_transactions_user_id ON point_transactions(user_id)",
+        "CREATE INDEX idx_point_transactions_type ON point_transactions(type)"
     ];
     
     foreach ($indexes as $index) {
         if ($conn->query($index)) {
             $results[] = "Índice criado com sucesso";
         } else {
-            $results[] = "Erro ao criar índice: " . $conn->error;
+            // Ignorar erro se índice já existe (erro 1061)
+            if ($conn->errno != 1061) {
+                $results[] = "Erro ao criar índice: " . $conn->error;
+            } else {
+                $results[] = "Índice já existe (ignorado)";
+            }
         }
     }
     
