@@ -117,7 +117,7 @@ try {
         $stmt->close();
         
         // 3. Criar registro de saque
-        $stmt = $conn->prepare("INSERT INTO withdrawals (user_id, pix_key, pix_key_type, amount, status, created_at) VALUES (?, ?, ?, ?, 'pending', NOW())");
+        $stmt = $conn->prepare("INSERT INTO withdrawals (user_id, pix_key, pix_type, amount, status, created_at) VALUES (?, ?, ?, ?, 'pending', NOW())");
         $stmt->bind_param("issd", $userId, $pixKey, $pixKeyType, $amountBrl);
         $stmt->execute();
         $withdrawalId = $stmt->insert_id;
