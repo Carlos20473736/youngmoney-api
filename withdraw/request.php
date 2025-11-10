@@ -109,8 +109,8 @@ try {
         $stmt->close();
         
         // 2. Registrar no histórico de pontos
-        $stmt = $conn->prepare("INSERT INTO points_history (user_id, points, description, type) VALUES (?, ?, ?, 'debit')");
-        $description = "Saque de R$ " . number_format($amountBrl, 2, ',', '.') . " via PIX";
+        $stmt = $conn->prepare("INSERT INTO points_history (user_id, points, description) VALUES (?, ?, ?)");
+        $description = "Saque de R$ " . number_format($amountBrl, 2, ',', '.') . " via PIX (débito)";
         $negativePoints = -$pointsRequired;
         $stmt->bind_param("iis", $userId, $negativePoints, $description);
         $stmt->execute();
