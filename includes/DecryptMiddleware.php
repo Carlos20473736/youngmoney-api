@@ -39,13 +39,17 @@ class DecryptMiddleware {
                 return [];
             }
             
-            // Descriptografar
+            // Descriptografar usando V1 (chave estática)
+            // O app Android tem fallback automático V2→V1, então sempre tentará V1 se V2 falhar
+            error_log("DecryptMiddleware: Attempting V1 decryption");
             $decrypted = CryptoManager::decrypt($data['data']);
             
             if ($decrypted === false) {
                 error_log("DecryptMiddleware: Failed to decrypt request");
                 return [];
             }
+            
+            error_log("DecryptMiddleware: V1 decryption successful");
             
             // Decodificar JSON descriptografado
             $decryptedData = json_decode($decrypted, true);
