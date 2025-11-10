@@ -40,10 +40,48 @@ try {
         exit;
     }
     
-    // Por enquanto, retornar lista vazia (criar tabela notifications depois)
+    $user = $result->fetch_assoc();
+    $userId = $user['id'];
+    $stmt->close();
+    
+    // Buscar notificações do usuário (últimas 50)
+    $stmt = $conn->prepare("
+        SELECT 
+            id,
+            title,
+            message,
+            is_read as `read`,
+            UNIX_TIMESTAMP(created_at) * 1000 as timestamp
+        FROM notifications
+        WHERE user_id = ?
+        ORDER BY created_at DESC
+        LIMIT 50
+    ");
+    $stmt->bind_param("i", $userId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    $notifications = [];
+    $unreadCount = 0;
+    while ($row = $result->fetch_assoc()) {
+        $notifications[] = [
+            'id' => (int)$row['id'],
+            'title' => $row['title'],
+            'message' => $row['message'],
+            'read' => (bool)$row['read'],
+            'timestamp' => (int)$row['timestamp']
+        ];
+        if (!$row['read']) {
+            $unreadCount++;
+        }
+    }
+    
+    $stmt->close();
+    $conn->close();
+    
     SecureMiddleware::sendSuccessAuto([
-        'notifications' => [],
-        'unread_count' => 0
+        'notifications' => $notifications,
+        'unread_count' => $unreadCount
     ], true);
     
 } catch (Exception $e) {
