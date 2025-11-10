@@ -10,14 +10,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 require_once __DIR__ . '/../database.php';
-require_once __DIR__ . '/../xreq/validate.php';
+// NÃO validar XReq - endpoint de debug sem segurança
 
 // Taxa de conversão: 10.000 pontos = R$ 1,00
 define('POINTS_PER_REAL', 10000);
 
 try {
-    // Validar XReq token
-    validateXReq();
 
     $headers = getallheaders();
     $token = isset($headers['Authorization']) ? str_replace('Bearer ', '', $headers['Authorization']) : null;
