@@ -11,6 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once __DIR__ . '/../database.php';
 require_once __DIR__ . '/../xreq/validate.php';
+require_once __DIR__ . '/../includes/DecryptMiddleware.php';
 
 // Taxa de conversão: 10.000 pontos = R$ 1,00
 define('POINTS_PER_REAL', 10000);
@@ -28,10 +29,11 @@ try {
         exit;
     }
     
-    $input = json_decode(file_get_contents('php://input'), true);
+    // Usar DecryptMiddleware para processar requisição (descriptografa automaticamente)
+    $input = DecryptMiddleware::processRequest();
     
     // Log para debug
-    error_log("[WITHDRAW] Input recebido: " . json_encode($input));
+    error_log("[WITHDRAW] Input processado: " . json_encode($input));
     
     if (!isset($input['amount']) || !isset($input['pixKeyType']) || !isset($input['pixKey'])) {
         error_log("[WITHDRAW] Dados incompletos - amount: " . (isset($input['amount']) ? 'OK' : 'FALTA') . ", pixKeyType: " . (isset($input['pixKeyType']) ? 'OK' : 'FALTA') . ", pixKey: " . (isset($input['pixKey']) ? 'OK' : 'FALTA'));
