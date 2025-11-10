@@ -139,14 +139,25 @@ try {
         
     } catch (Exception $e) {
         $conn->rollback();
-        error_log("[WITHDRAW_PLAIN] Transaction error: " . $e->getMessage());
+        $errorMsg = $e->getMessage();
+        error_log("[WITHDRAW_PLAIN] Transaction error: " . $errorMsg);
         http_response_code(500);
-        echo json_encode(['success' => false, 'error' => 'Erro ao processar saque']);
+        echo json_encode([
+            'success' => false,
+            'error' => 'Erro ao processar saque',
+            'details' => $errorMsg,
+            'sql_error' => $conn->error
+        ]);
     }
     
 } catch (Exception $e) {
-    error_log("[WITHDRAW_PLAIN] Error: " . $e->getMessage());
+    $errorMsg = $e->getMessage();
+    error_log("[WITHDRAW_PLAIN] Error: " . $errorMsg);
     http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Erro interno do servidor']);
+    echo json_encode([
+        'success' => false,
+        'error' => 'Erro interno do servidor',
+        'details' => $errorMsg
+    ]);
 }
 ?>
