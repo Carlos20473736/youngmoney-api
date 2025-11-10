@@ -12,6 +12,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 require_once __DIR__ . '/../database.php';
 require_once __DIR__ . '/../xreq/validate.php';
 
+// Taxa de conversão: 10.000 pontos = R$ 1,00
+define('POINTS_PER_REAL', 10000);
+
 try {
     // Validar XReq token
     validateXReq();
@@ -27,23 +30,29 @@ try {
     
     $input = json_decode(file_get_contents('php://input'), true);
     
-    if (!isset($input['amount'])) {
+    if (!isset($input['amount']) || !isset($input['pixKeyType']) || !isset($input['pixKey'])) {
         http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Valor não fornecido']);
+        echo json_encode(['success' => false, 'error' => 'Dados incompletos']);
         exit;
     }
     
-    $amount = (int)$input['amount'];
+    $amountBrl = floatval($input['amount']);
+    $pixKeyType = $input['pixKeyType'];
+    $pixKey = $input['pixKey'];
     
-    if ($amount <= 0) {
+    // Validar valor mínimo (R$ 1,00)
+    if ($amountBrl < 1) {
         http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Valor deve ser maior que zero']);
+        echo json_encode(['success' => false, 'error' => 'Valor mínimo: R$ 1,00']);
         exit;
     }
+    
+    // Calcular pontos necessários (R$ 1,00 = 10.000 pontos)
+    $pointsRequired = intval($amountBrl * POINTS_PER_REAL);
     
     $conn = getDbConnection();
     
-    // Buscar usuário
+    // Buscar usuário e saldo
     $stmt = $conn->prepare("SELECT id, points FROM users WHERE token = ?");
     $stmt->bind_param("s", $token);
     $stmt->execute();
@@ -58,23 +67,65 @@ try {
     $user = $result->fetch_assoc();
     $userId = $user['id'];
     $currentPoints = $user['points'];
+    $stmt->close();
     
-    if ($currentPoints < $amount) {
+    // Verificar se tem pontos suficientes
+    if ($currentPoints < $pointsRequired) {
         http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Saldo insuficiente']);
+        echo json_encode([
+            'success' => false, 
+            'error' => 'Saldo insuficiente',
+            'current_points' => $currentPoints,
+            'required_points' => $pointsRequired
+        ]);
         exit;
     }
     
-    // Por enquanto, apenas retornar sucesso (criar tabela withdrawals depois)
-    echo json_encode([
-        'success' => true,
-        'data' => [
-            'withdrawal_id' => time(),
-            'amount' => $amount,
-            'status' => 'pending',
-            'message' => 'Solicitação de saque enviada com sucesso'
-        ]
-    ]);
+    // Iniciar transação
+    $conn->begin_transaction();
+    
+    try {
+        // 1. Debitar pontos do usuário
+        $stmt = $conn->prepare("UPDATE users SET points = points - ? WHERE id = ?");
+        $stmt->bind_param("ii", $pointsRequired, $userId);
+        $stmt->execute();
+        $stmt->close();
+        
+        // 2. Registrar no histórico de pontos
+        $stmt = $conn->prepare("INSERT INTO points_history (user_id, points, description, type) VALUES (?, ?, ?, 'debit')");
+        $description = "Saque de R$ " . number_format($amountBrl, 2, ',', '.') . " via PIX";
+        $negativePoints = -$pointsRequired;
+        $stmt->bind_param("iis", $userId, $negativePoints, $description);
+        $stmt->execute();
+        $stmt->close();
+        
+        // 3. Criar registro de saque
+        $stmt = $conn->prepare("INSERT INTO withdrawals (user_id, pix_key, pix_key_type, amount, status, created_at) VALUES (?, ?, ?, ?, 'pending', NOW())");
+        $stmt->bind_param("issd", $userId, $pixKey, $pixKeyType, $amountBrl);
+        $stmt->execute();
+        $withdrawalId = $stmt->insert_id;
+        $stmt->close();
+        
+        // Commit da transação
+        $conn->commit();
+        
+        echo json_encode([
+            'success' => true,
+            'data' => [
+                'withdrawal_id' => $withdrawalId,
+                'amount' => $amountBrl,
+                'points_debited' => $pointsRequired,
+                'remaining_points' => $currentPoints - $pointsRequired,
+                'status' => 'pending',
+                'message' => 'Solicitação de saque enviada com sucesso'
+            ]
+        ]);
+        
+    } catch (Exception $e) {
+        // Rollback em caso de erro
+        $conn->rollback();
+        throw $e;
+    }
     
 } catch (Exception $e) {
     http_response_code(500);
