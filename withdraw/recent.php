@@ -10,12 +10,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 require_once __DIR__ . '/../database.php';
-require_once __DIR__ . '/../xreq/validate.php';
 require_once __DIR__ . '/../includes/SecureMiddleware.php';
 
 try {
-    // Validar XReq token
-    validateXReq();
+    // Endpoint público - não requer XReq validation
 
     $conn = getDbConnection();
     
