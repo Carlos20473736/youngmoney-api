@@ -21,7 +21,7 @@ try {
     $stmt = $conn->prepare("
         SELECT 
             u.name,
-            u.photo_url,
+            u.profile_picture,
             w.amount,
             w.created_at
         FROM withdrawals w
@@ -38,7 +38,7 @@ try {
     while ($row = $result->fetch_assoc()) {
         $withdrawals[] = [
             'name' => $row['name'],
-            'photo_url' => $row['photo_url'],
+            'photo_url' => $row['profile_picture'],
             'amount' => floatval($row['amount']),
             'created_at' => $row['created_at']
         ];
