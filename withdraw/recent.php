@@ -10,7 +10,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 require_once __DIR__ . '/../database.php';
-require_once __DIR__ . '/../includes/SecureMiddleware.php';
 
 try {
     // Endpoint público - não requer XReq validation
@@ -46,8 +45,8 @@ try {
     
     $stmt->close();
     
-    // Retornar com SecureMiddleware (criptografado)
-    SecureMiddleware::sendResponse([
+    // Retornar JSON simples (endpoint público)
+    echo json_encode([
         'success' => true,
         'data' => [
             'withdrawals' => $withdrawals
