@@ -1,10 +1,16 @@
 <?php
 // Arquivo de Conexão com o Banco de Dados
-
 require_once 'config.php';
 
 function getDbConnection() {
     try {
+        // Debug: Log das configurações (sem senha)
+        error_log("DB_HOST: " . DB_HOST);
+        error_log("DB_USER: " . DB_USER);
+        error_log("DB_NAME: " . DB_NAME);
+        error_log("DB_PORT: " . DB_PORT);
+        error_log("DB_PASSWORD exists: " . (DB_PASSWORD ? 'yes' : 'no'));
+        
         // Criar conexão MySQLi com SSL
         $conn = mysqli_init();
         
@@ -17,19 +23,21 @@ function getDbConnection() {
         $conn->options(MYSQLI_OPT_SSL_VERIFY_SERVER_CERT, false);
         
         // Conectar ao banco
-        $conn->real_connect(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME, DB_PORT, NULL, MYSQLI_CLIENT_SSL);
+        $success = $conn->real_connect(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME, DB_PORT, NULL, MYSQLI_CLIENT_SSL);
         
-        if ($conn->connect_error) {
+        if (!$success) {
+            error_log("Connection failed: " . $conn->connect_error);
             throw new Exception("Connection failed: " . $conn->connect_error);
         }
         
+        error_log("Database connection successful!");
         return $conn;
     } catch (Exception $e) {
         // Em um ambiente de produção, você pode querer logar o erro em vez de exibi-lo
+        error_log("Database exception: " . $e->getMessage());
         http_response_code(500);
         echo json_encode(['error' => 'Database connection error: ' . $e->getMessage()]);
         exit;
     }
 }
-
 ?>
