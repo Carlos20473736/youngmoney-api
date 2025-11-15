@@ -42,7 +42,7 @@ function getUserFromToken($conn) {
     $token = $matches[1];
     
     // Buscar usuário pelo token
-    $stmt = $conn->prepare("SELECT id, name, email FROM users WHERE auth_token = ? AND token_expires_at > NOW()");
+    $stmt = $conn->prepare("SELECT id, name, email FROM users WHERE token = ?");
     $stmt->bind_param("s", $token);
     $stmt->execute();
     $result = $stmt->get_result();
