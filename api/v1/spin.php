@@ -128,11 +128,11 @@ try {
         
         // 3. Registrar no histórico de pontos
         $stmt = $conn->prepare("
-            INSERT INTO points_history (user_id, points, activity, description, created_at)
-            VALUES (?, ?, 'spin_wheel', ?, ?)
+            INSERT INTO points_history (user_id, points, description, created_at)
+            VALUES (?, ?, ?, NOW())
         ");
         $description = "Roleta da Sorte - Ganhou {$prizeValue} pontos";
-        $stmt->bind_param("iiss", $userId, $prizeValue, $description, $currentDateTime);
+        $stmt->bind_param("iis", $userId, $prizeValue, $description);
         $stmt->execute();
         
         // Commit da transação
