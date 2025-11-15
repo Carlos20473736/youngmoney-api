@@ -7,11 +7,12 @@
  */
 
 header('Content-Type: text/plain');
-
 require_once __DIR__ . '/database.php';
 
 try {
     echo "Criando tabela spin_history...\n\n";
+    
+    $conn = getDbConnection();
     
     $sql = "CREATE TABLE IF NOT EXISTS spin_history (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -22,24 +23,24 @@ try {
         INDEX idx_user_date (user_id, created_at)
     )";
     
-    $pdo->exec($sql);
-    
-    echo "✅ Tabela spin_history criada com sucesso!\n\n";
+    if ($conn->query($sql)) {
+        echo "✅ Tabela spin_history criada com sucesso!\n\n";
+    } else {
+        throw new Exception("Erro ao criar tabela: " . $conn->error);
+    }
     
     // Verificar se tabela existe
-    $stmt = $pdo->query("SHOW TABLES LIKE 'spin_history'");
-    $exists = $stmt->fetch();
+    $result = $conn->query("SHOW TABLES LIKE 'spin_history'");
     
-    if ($exists) {
+    if ($result->num_rows > 0) {
         echo "✅ Verificação: Tabela existe no banco!\n\n";
         
         // Mostrar estrutura
-        $stmt = $pdo->query("DESCRIBE spin_history");
-        $columns = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $result = $conn->query("DESCRIBE spin_history");
         
         echo "Estrutura da tabela:\n";
         echo "-------------------\n";
-        foreach ($columns as $col) {
+        while ($col = $result->fetch_assoc()) {
             echo "- {$col['Field']}: {$col['Type']}\n";
         }
     } else {
@@ -48,6 +49,8 @@ try {
     
     echo "\n\n🗑️ IMPORTANTE: Delete este arquivo após executar!\n";
     echo "Comando: rm setup_spin_table.php\n";
+    
+    $conn->close();
     
 } catch (Exception $e) {
     echo "❌ Erro ao criar tabela:\n";
