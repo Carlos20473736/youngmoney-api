@@ -27,8 +27,11 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 // Incluir configuração do banco de dados
 require_once __DIR__ . '/../../database.php';
 
-// Função para validar token (simplificada - ajuste conforme sua autenticação)
-function getUserFromToken() {
+// Obter conexão
+$conn = getDbConnection();
+
+// Função para validar token
+function getUserFromToken($conn) {
     $headers = getallheaders();
     $authHeader = $headers['Authorization'] ?? '';
     
@@ -38,11 +41,12 @@ function getUserFromToken() {
     
     $token = $matches[1];
     
-    // Buscar usuário pelo token (ajuste conforme sua tabela)
-    global $pdo;
-    $stmt = $pdo->prepare("SELECT id, name, email FROM users WHERE auth_token = ? AND token_expires_at > NOW()");
-    $stmt->execute([$token]);
-    return $stmt->fetch(PDO::FETCH_ASSOC);
+    // Buscar usuário pelo token
+    $stmt = $conn->prepare("SELECT id, name, email FROM users WHERE auth_token = ? AND token_expires_at > NOW()");
+    $stmt->bind_param("s", $token);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    return $result->fetch_assoc();
 }
 
 // Valores possíveis da roleta (multiplicados por 10)
@@ -51,7 +55,7 @@ $maxDailySpins = 10;
 
 try {
     // Validar autenticação
-    $user = getUserFromToken();
+    $user = getUserFromToken($conn);
     if (!$user) {
         http_response_code(401);
         echo json_encode([
@@ -69,14 +73,16 @@ try {
     $currentDateTime = date('Y-m-d H:i:s');
     
     // Verificar giros do usuário hoje
-    $stmt = $pdo->prepare("
+    $stmt = $conn->prepare("
         SELECT COUNT(*) as spins_today 
         FROM spin_history 
         WHERE user_id = ? AND DATE(created_at) = ?
     ");
-    $stmt->execute([$userId, $currentDate]);
-    $result = $stmt->fetch(PDO::FETCH_ASSOC);
-    $spinsToday = (int)$result['spins_today'];
+    $stmt->bind_param("is", $userId, $currentDate);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $row = $result->fetch_assoc();
+    $spinsToday = (int)$row['spins_today'];
     
     // Verificar se ainda tem giros disponíveis
     if ($spinsToday >= $maxDailySpins) {
@@ -99,43 +105,48 @@ try {
     $prizeValue = $prizeValues[$prizeIndex];
     
     // Iniciar transação
-    $pdo->beginTransaction();
+    $conn->begin_transaction();
     
     try {
         // 1. Registrar giro no histórico
-        $stmt = $pdo->prepare("
+        $stmt = $conn->prepare("
             INSERT INTO spin_history (user_id, prize_value, prize_index, created_at)
             VALUES (?, ?, ?, ?)
         ");
-        $stmt->execute([$userId, $prizeValue, $prizeIndex, $currentDateTime]);
+        $stmt->bind_param("iiis", $userId, $prizeValue, $prizeIndex, $currentDateTime);
+        $stmt->execute();
         
         // 2. Adicionar pontos ao saldo do usuário
-        $stmt = $pdo->prepare("
+        $stmt = $conn->prepare("
             UPDATE users 
             SET points = points + ?,
                 updated_at = ?
             WHERE id = ?
         ");
-        $stmt->execute([$prizeValue, $currentDateTime, $userId]);
+        $stmt->bind_param("isi", $prizeValue, $currentDateTime, $userId);
+        $stmt->execute();
         
         // 3. Registrar no histórico de pontos
-        $stmt = $pdo->prepare("
+        $stmt = $conn->prepare("
             INSERT INTO points_history (user_id, points, activity, description, created_at)
             VALUES (?, ?, 'spin_wheel', ?, ?)
         ");
         $description = "Roleta da Sorte - Ganhou {$prizeValue} pontos";
-        $stmt->execute([$userId, $prizeValue, $description, $currentDateTime]);
+        $stmt->bind_param("iiss", $userId, $prizeValue, $description, $currentDateTime);
+        $stmt->execute();
         
         // Commit da transação
-        $pdo->commit();
+        $conn->commit();
         
         // Calcular giros restantes
         $spinsRemaining = $maxDailySpins - ($spinsToday + 1);
         
         // Obter saldo atualizado
-        $stmt = $pdo->prepare("SELECT points FROM users WHERE id = ?");
-        $stmt->execute([$userId]);
-        $userData = $stmt->fetch(PDO::FETCH_ASSOC);
+        $stmt = $conn->prepare("SELECT points FROM users WHERE id = ?");
+        $stmt->bind_param("i", $userId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $userData = $result->fetch_assoc();
         $newBalance = (int)$userData['points'];
         
         // Resposta de sucesso
@@ -156,7 +167,7 @@ try {
         
     } catch (Exception $e) {
         // Rollback em caso de erro
-        $pdo->rollBack();
+        $conn->rollback();
         throw $e;
     }
     
@@ -168,4 +179,6 @@ try {
         'message' => 'Erro ao processar giro: ' . $e->getMessage()
     ]);
 }
+
+$conn->close();
 ?>
