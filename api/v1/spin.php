@@ -25,7 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 // Incluir configuração do banco de dados
-require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../../database.php';
 
 // Função para validar token (simplificada - ajuste conforme sua autenticação)
 function getUserFromToken() {
