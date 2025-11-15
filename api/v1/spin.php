@@ -8,7 +8,7 @@
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: POST, OPTIONS');
+header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
 
 // Handle preflight
@@ -17,8 +17,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-// Apenas POST
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+// Aceitar GET e POST
+if ($_SERVER['REQUEST_METHOD'] !== 'POST' && $_SERVER['REQUEST_METHOD'] !== 'GET') {
     http_response_code(405);
     echo json_encode(['status' => 'error', 'message' => 'Método não permitido']);
     exit;
@@ -84,7 +84,24 @@ try {
     $row = $result->fetch_assoc();
     $spinsToday = (int)$row['spins_today'];
     
-    // Verificar se ainda tem giros disponíveis
+    $spinsRemaining = $maxDailySpins - $spinsToday;
+    
+    // Se for GET, apenas retornar giros restantes
+    if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+        echo json_encode([
+            'status' => 'success',
+            'data' => [
+                'spins_remaining' => $spinsRemaining,
+                'spins_today' => $spinsToday,
+                'max_daily_spins' => $maxDailySpins,
+                'server_time' => $currentDateTime,
+                'server_timestamp' => time()
+            ]
+        ]);
+        exit;
+    }
+    
+    // Verificar se ainda tem giros disponíveis (apenas para POST)
     if ($spinsToday >= $maxDailySpins) {
         echo json_encode([
             'status' => 'error',
