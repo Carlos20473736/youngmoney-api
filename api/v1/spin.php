@@ -86,7 +86,7 @@ try {
     
     $spinsRemaining = $maxDailySpins - $spinsToday;
     
-    // Se for GET, apenas retornar giros restantes
+    // Se for GET, apenas retornar giros restantes e valores da roleta
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         echo json_encode([
             'status' => 'success',
@@ -94,6 +94,7 @@ try {
                 'spins_remaining' => $spinsRemaining,
                 'spins_today' => $spinsToday,
                 'max_daily_spins' => $maxDailySpins,
+                'prize_values' => $prizeValues,
                 'server_time' => $currentDateTime,
                 'server_timestamp' => time()
             ]
