@@ -101,6 +101,11 @@ try {
         ];
     }
     
+    // Obter timestamp do servidor (GMT-3 - Brasília)
+    date_default_timezone_set('America/Sao_Paulo');
+    $serverTime = date('Y-m-d H:i:s');
+    $serverTimestamp = time();
+    
     echo json_encode([
         'success' => true,
         'data' => [
@@ -110,7 +115,9 @@ try {
                 'start_date' => $periodInfo['start_date'],
                 'end_date' => $periodInfo['end_date'],
                 'period_id' => $periodId
-            ]
+            ],
+            'server_time' => $serverTime,
+            'server_timestamp' => $serverTimestamp
         ]
     ]);
     
