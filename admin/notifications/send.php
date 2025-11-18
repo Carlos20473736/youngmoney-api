@@ -17,11 +17,30 @@ try {
     
     $conn = getDbConnection();
     
-    $stmt = $conn->prepare("INSERT INTO notifications (user_id, title, message, created_at) VALUES (?, ?, ?, NOW())");
-    $stmt->bind_param('iss', $userId, $title, $message);
-    $stmt->execute();
-    
-    echo json_encode(['success' => true, 'data' => ['id' => $conn->insert_id]]);
+    if ($userId === null) {
+        // Enviar para todos os usuários
+        $stmt = $conn->prepare("SELECT id FROM users");
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        $insertStmt = $conn->prepare("INSERT INTO notifications (user_id, title, message, created_at) VALUES (?, ?, ?, NOW())");
+        
+        $count = 0;
+        while ($row = $result->fetch_assoc()) {
+            $insertStmt->bind_param('iss', $row['id'], $title, $message);
+            $insertStmt->execute();
+            $count++;
+        }
+        
+        echo json_encode(['success' => true, 'data' => ['count' => $count]]);
+    } else {
+        // Enviar para um usuário específico
+        $stmt = $conn->prepare("INSERT INTO notifications (user_id, title, message, created_at) VALUES (?, ?, ?, NOW())");
+        $stmt->bind_param('iss', $userId, $title, $message);
+        $stmt->execute();
+        
+        echo json_encode(['success' => true, 'data' => ['id' => $conn->insert_id]]);
+    }
     
 } catch (Exception $e) {
     http_response_code(500);
