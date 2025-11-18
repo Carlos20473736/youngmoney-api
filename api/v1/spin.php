@@ -49,8 +49,27 @@ function getUserFromToken($conn) {
     return $result->fetch_assoc();
 }
 
-// Valores possíveis da roleta (multiplicados por 10)
-$prizeValues = [100, 250, 500, 750, 1000, 1500, 2000, 5000];
+// Buscar valores da roleta do banco de dados
+$prizeValues = [];
+try {
+    $stmt = $conn->prepare("SELECT setting_value FROM roulette_settings ORDER BY setting_key");
+    $stmt->execute();
+    $result = $stmt->get_result();
+    while ($row = $result->fetch_assoc()) {
+        $prizeValues[] = (int)$row['setting_value'];
+    }
+    $stmt->close();
+    
+    // Se não encontrou valores, usar padrão
+    if (empty($prizeValues)) {
+        $prizeValues = [100, 250, 500, 750, 1000, 1500, 2000, 5000];
+    }
+} catch (Exception $e) {
+    // Em caso de erro, usar valores padrão
+    error_log("Error loading roulette settings: " . $e->getMessage());
+    $prizeValues = [100, 250, 500, 750, 1000, 1500, 2000, 5000];
+}
+
 $maxDailySpins = 10;
 
 try {
