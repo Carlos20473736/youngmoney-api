@@ -27,8 +27,8 @@ try {
     
     $conn = getDbConnection();
     
-    // Buscar usuário com daily_points e total_points
-    $stmt = $conn->prepare("SELECT id, name, daily_points, points as total_points FROM users WHERE token = ?");
+    // Buscar usuário com points
+    $stmt = $conn->prepare("SELECT id, name, points FROM users WHERE token = ?");
     $stmt->bind_param("s", $token);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -41,12 +41,11 @@ try {
     
     $user = $result->fetch_assoc();
     $userId = $user['id'];
-    $dailyPoints = $user['daily_points'];
-    $totalPoints = $user['total_points'];
+    $userPoints = $user['points'];
     
-    // Calcular posição do usuário baseada em DAILY_POINTS (ranking diário)
-    $stmt = $conn->prepare("SELECT COUNT(*) as position FROM users WHERE daily_points > ?");
-    $stmt->bind_param("i", $dailyPoints);
+    // Calcular posição do usuário baseada em POINTS
+    $stmt = $conn->prepare("SELECT COUNT(*) as position FROM users WHERE points > ?");
+    $stmt->bind_param("i", $userPoints);
     $stmt->execute();
     $result = $stmt->get_result();
     $row = $result->fetch_assoc();
@@ -56,9 +55,7 @@ try {
         'success' => true,
         'data' => [
             'position' => $position,
-            'daily_points' => (int)$dailyPoints,
-            'points' => (int)$dailyPoints, // Para compatibilidade com versão antiga
-            'total_points' => (int)$totalPoints,
+            'points' => (int)$userPoints,
             'name' => $user['name']
         ]
     ]);
