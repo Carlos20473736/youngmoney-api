@@ -70,9 +70,9 @@ try {
     $conn->begin_transaction();
     
     try {
-        // 1. Atualizar pontos totais do usuário
-        $stmt = $conn->prepare("UPDATE users SET points = ? WHERE id = ?");
-        $stmt->bind_param("ii", $newPoints, $userId);
+        // 1. Atualizar pontos totais E pontos diários do usuário
+        $stmt = $conn->prepare("UPDATE users SET points = points + ?, daily_points = daily_points + ? WHERE id = ?");
+        $stmt->bind_param("iii", $points, $points, $userId);
         $stmt->execute();
         
         // 2. Salvar no histórico
