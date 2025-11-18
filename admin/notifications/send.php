@@ -1,4 +1,5 @@
 <?php
+error_reporting(E_ERROR | E_PARSE); // Suprimir warnings
 require_once __DIR__ . '/../cors.php';
 header('Content-Type: application/json');
 
