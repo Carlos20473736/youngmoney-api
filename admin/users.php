@@ -40,8 +40,7 @@ try {
             name, 
             email, 
             points, 
-            created_at,
-            banned
+            created_at
         FROM users" . $whereClause . "
         ORDER BY points DESC
         LIMIT ? OFFSET ?
@@ -68,7 +67,7 @@ try {
             'points' => (int)$row['points'],
             'daily_points' => 0,
             'created_at' => $row['created_at'],
-            'banned' => (bool)($row['banned'] ?? false)
+            'banned' => false
         ];
     }
     
