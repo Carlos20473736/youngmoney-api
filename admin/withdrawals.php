@@ -23,8 +23,7 @@ try {
             w.amount,
             w.pix_key,
             w.status,
-            w.created_at,
-            w.processed_at
+            w.created_at
         FROM withdrawals w
         LEFT JOIN users u ON w.user_id = u.id" . $whereClause . "
         ORDER BY w.created_at DESC
@@ -48,7 +47,7 @@ try {
             'pix_key' => $row['pix_key'],
             'status' => $row['status'],
             'created_at' => $row['created_at'],
-            'processed_at' => $row['processed_at']
+            'processed_at' => null
         ];
     }
     
