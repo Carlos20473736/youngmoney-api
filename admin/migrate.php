@@ -5,6 +5,8 @@ require_once __DIR__ . '/../database.php';
 header('Content-Type: application/json');
 
 try {
+    $conn = getDbConnection();
+    
     // Verificar se a coluna já existe
     $checkStmt = $conn->query("SHOW COLUMNS FROM users LIKE 'daily_points'");
     
