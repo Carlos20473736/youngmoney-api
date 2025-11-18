@@ -96,7 +96,7 @@ function addPointsToUser($conn, $userId, $points, $description) {
             do {
                 if ($result = $conn->store_result()) {
                     if ($periodRow = $result->fetch_assoc()) {
-                        $periodId = $periodRow['period_id'];
+                        $periodId = isset($periodRow['period_id']) ? $periodRow['period_id'] : null;
                     }
                     $result->free();
                 }
