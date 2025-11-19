@@ -1,11 +1,15 @@
 <?php
 require_once __DIR__ . '/../admin/cors.php';
 require_once __DIR__ . '/../database.php';
+require_once __DIR__ . '/../middleware/auto_reset.php';
 
 header('Content-Type: application/json');
 
 try {
     $conn = getDbConnection();
+    
+    // Verificar e fazer reset automático se necessário
+    checkAndResetRanking($conn);
     
     // Buscar ranking ordenado por daily_points (pontos diários)
     $stmt = $conn->prepare("
