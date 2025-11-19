@@ -1,15 +1,20 @@
 <?php
 /**
- * Endpoint Público de Configurações
+ * Endpoint Público de Configurações com Criptografia
  * Permite que o app Android busque configurações do sistema
  * 
  * GET /api/v1/config.php
+ * 
+ * Suporta:
+ * - Requisições criptografadas (X-Req header)
+ * - Respostas criptografadas
+ * - Fallback para JSON não criptografado
  */
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Req');
 
 // Responder OPTIONS para CORS preflight
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -17,35 +22,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-// Configurações do banco usando variáveis de ambiente
-$dbHost = getenv('DB_HOST') ?: 'mysql-2bb9a545-project-e36d.b.aivencloud.com';
-$dbUser = getenv('DB_USER') ?: 'avnadmin';
-$dbPass = getenv('DB_PASSWORD') ?: '';
-$dbName = getenv('DB_NAME') ?: 'defaultdb';
-$dbPort = getenv('DB_PORT') ?: 26594;
-
-// Criar conexão MySQLi
-$conn = mysqli_init();
-if (!$conn) {
-    throw new Exception('mysqli_init failed');
-}
-
-// Configurar SSL
-$conn->ssl_set(NULL, NULL, NULL, NULL, NULL);
-$conn->options(MYSQLI_OPT_SSL_VERIFY_SERVER_CERT, false);
-
-// Conectar
-$success = $conn->real_connect($dbHost, $dbUser, $dbPass, $dbName, $dbPort, NULL, MYSQLI_CLIENT_SSL);
-if (!$success) {
-    throw new Exception('Connection failed: ' . $conn->connect_error);
-}
+require_once __DIR__ . '/../../database.php';
+require_once __DIR__ . '/../../includes/DecryptMiddleware.php';
 
 try {
     if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
-        throw new Exception('Método não permitido');
+        DecryptMiddleware::sendError('Método não permitido', 405);
+        exit;
     }
     
-    // Conexão já criada acima
+    // Conectar ao banco
+    $conn = getDbConnection();
     
     // Buscar horário de reset
     $stmt = $conn->prepare("
@@ -65,21 +52,16 @@ try {
     // Extrair hora e minuto
     list($hour, $minute) = explode(':', $resetTime);
     
-    echo json_encode([
-        'success' => true,
-        'data' => [
-            'reset_time' => $resetTime,
-            'reset_hour' => (int)$hour,
-            'reset_minute' => (int)$minute,
-            'timezone' => 'America/Sao_Paulo'
-        ]
-    ]);
+    // Enviar resposta criptografada
+    DecryptMiddleware::sendSuccess([
+        'reset_time' => $resetTime,
+        'reset_hour' => (int)$hour,
+        'reset_minute' => (int)$minute,
+        'timezone' => 'America/Sao_Paulo'
+    ], true); // true = criptografar resposta
     
 } catch (Exception $e) {
-    http_response_code(500);
-    echo json_encode([
-        'success' => false,
-        'error' => $e->getMessage()
-    ]);
+    error_log("Config endpoint error: " . $e->getMessage());
+    DecryptMiddleware::sendError('Erro ao buscar configurações: ' . $e->getMessage(), 500);
 }
 ?>
