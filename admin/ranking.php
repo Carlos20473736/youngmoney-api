@@ -28,9 +28,14 @@ try {
         $ranking[] = $row;
     }
     
+    // Adicionar timestamp do servidor para o app
+    date_default_timezone_set('America/Sao_Paulo');
+    $serverTimestamp = time();
+    
     echo json_encode([
         'success' => true,
-        'data' => $ranking
+        'data' => $ranking,
+        'server_timestamp' => $serverTimestamp
     ]);
     
 } catch (Exception $e) {
