@@ -73,6 +73,23 @@ try {
                 $updatedCount++;
             }
             
+            // Atualizar maxDailySpins se fornecido
+            if (isset($input['max_daily_spins'])) {
+                $maxSpins = (int)$input['max_daily_spins'];
+                
+                // Validar que é um número positivo
+                if ($maxSpins < 1) {
+                    throw new Exception("max_daily_spins deve ser no mínimo 1");
+                }
+                
+                $key = 'max_daily_spins';
+                $description = 'Número máximo de giros diários permitidos';
+                
+                $stmt->bind_param('sss', $key, $maxSpins, $description);
+                $stmt->execute();
+                $updatedCount++;
+            }
+            
             $stmt->close();
             $conn->commit();
             $conn->close();

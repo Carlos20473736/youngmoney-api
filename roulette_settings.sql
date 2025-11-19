@@ -20,7 +20,8 @@ INSERT INTO roulette_settings (setting_key, setting_value, description) VALUES
 ('prize_5', '1000', 'Prêmio 5 da roleta (em pontos)'),
 ('prize_6', '2000', 'Prêmio 6 da roleta (em pontos)'),
 ('prize_7', '5000', 'Prêmio 7 da roleta (em pontos)'),
-('prize_8', '10000', 'Prêmio 8 da roleta (em pontos)')
+('prize_8', '10000', 'Prêmio 8 da roleta (em pontos)'),
+('max_daily_spins', '10', 'Número máximo de giros diários permitidos')
 ON DUPLICATE KEY UPDATE 
     setting_value = VALUES(setting_value),
     description = VALUES(description);
