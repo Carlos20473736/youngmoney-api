@@ -66,6 +66,28 @@ try {
     list($reset_hour, $reset_minute) = explode(':', $reset_time);
     
     $stmt->close();
+    
+    // Buscar valores rápidos de saque
+    $stmt = $conn->prepare("SELECT value FROM quick_withdrawal_values WHERE is_active = 1 ORDER BY value ASC");
+    
+    if (!$stmt) {
+        throw new Exception("Prepare failed: " . $conn->error);
+    }
+    
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    $quick_values = [];
+    while ($row = $result->fetch_assoc()) {
+        $quick_values[] = (int)$row['value'];
+    }
+    
+    // Se não houver valores, usar padrão
+    if (empty($quick_values)) {
+        $quick_values = [10, 20, 50, 100, 200, 500];
+    }
+    
+    $stmt->close();
     $conn->close();
     
     // Enviar resposta criptografada
@@ -73,7 +95,8 @@ try {
         'reset_time' => $reset_time,
         'reset_hour' => (int)$reset_hour,
         'reset_minute' => (int)$reset_minute,
-        'timezone' => 'America/Sao_Paulo'
+        'timezone' => 'America/Sao_Paulo',
+        'quick_withdrawal_values' => $quick_values
     ], true); // true = criptografar resposta
     
 } catch (Exception $e) {
