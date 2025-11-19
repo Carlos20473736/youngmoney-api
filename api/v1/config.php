@@ -1,13 +1,34 @@
 <?php
-// Endpoint público para o app buscar configurações do sistema
+/**
+ * Endpoint Público de Configurações com Criptografia V2
+ * Permite que o app Android busque configurações do sistema
+ * 
+ * GET /api/v1/config.php
+ * 
+ * Suporta criptografia V2 (X-Req header)
+ */
+
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET');
-header('Access-Control-Allow-Headers: Content-Type');
+header('Access-Control-Allow-Methods: GET, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, X-Req');
+
+// Responder OPTIONS para CORS preflight
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
 
 date_default_timezone_set('America/Sao_Paulo');
 
+require_once __DIR__ . '/../../includes/DecryptMiddleware.php';
+
 try {
+    if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+        DecryptMiddleware::sendError('Método não permitido', 405);
+        exit;
+    }
+    
     // Conectar diretamente ao banco usando variáveis de ambiente
     $db_host = $_ENV['DB_HOST'] ?? getenv('DB_HOST');
     $db_user = $_ENV['DB_USER'] ?? getenv('DB_USER');
@@ -47,23 +68,16 @@ try {
     $stmt->close();
     $conn->close();
     
-    // Retornar configurações
-    echo json_encode([
-        'success' => true,
-        'data' => [
-            'reset_time' => $reset_time,
-            'reset_hour' => (int)$reset_hour,
-            'reset_minute' => (int)$reset_minute,
-            'timezone' => 'America/Sao_Paulo'
-        ]
-    ]);
+    // Enviar resposta criptografada
+    DecryptMiddleware::sendSuccess([
+        'reset_time' => $reset_time,
+        'reset_hour' => (int)$reset_hour,
+        'reset_minute' => (int)$reset_minute,
+        'timezone' => 'America/Sao_Paulo'
+    ], true); // true = criptografar resposta
     
 } catch (Exception $e) {
-    http_response_code(500);
-    echo json_encode([
-        'success' => false,
-        'error' => 'Erro ao buscar configurações',
-        'message' => $e->getMessage()
-    ]);
+    error_log("Config endpoint error: " . $e->getMessage());
+    DecryptMiddleware::sendError('Erro ao buscar configurações: ' . $e->getMessage(), 500);
 }
 ?>
