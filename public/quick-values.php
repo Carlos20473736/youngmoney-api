@@ -41,7 +41,13 @@ try {
     
     $quick_values = [];
     while ($row = $result->fetch_assoc()) {
-        $quick_values[] = (int)$row['value_amount'];
+        $value = (int)$row['value_amount'];
+        // Converter -1 para "TUDO"
+        if ($value === -1) {
+            $quick_values[] = 'TUDO';
+        } else {
+            $quick_values[] = $value;
+        }
     }
     
     // Se não houver valores, usar padrão
