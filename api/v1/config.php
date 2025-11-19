@@ -68,7 +68,7 @@ try {
     $stmt->close();
     
     // Buscar valores rápidos de saque
-    $stmt = $conn->prepare("SELECT value FROM withdrawal_quick_values WHERE is_active = 1 ORDER BY value ASC");
+    $stmt = $conn->prepare("SELECT value_amount FROM withdrawal_quick_values WHERE is_active = 1 ORDER BY value_amount ASC");
     
     if (!$stmt) {
         throw new Exception("Prepare failed: " . $conn->error);
@@ -79,7 +79,7 @@ try {
     
     $quick_values = [];
     while ($row = $result->fetch_assoc()) {
-        $quick_values[] = (int)$row['value'];
+        $quick_values[] = (int)$row['value_amount'];
     }
     
     // Se não houver valores, usar padrão
