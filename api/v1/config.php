@@ -1,67 +1,69 @@
 <?php
-/**
- * Endpoint Público de Configurações com Criptografia
- * Permite que o app Android busque configurações do sistema
- * 
- * GET /api/v1/config.php
- * 
- * Suporta:
- * - Requisições criptografadas (X-Req header)
- * - Respostas criptografadas
- * - Fallback para JSON não criptografado
- */
-
+// Endpoint público para o app buscar configurações do sistema
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Req');
+header('Access-Control-Allow-Methods: GET');
+header('Access-Control-Allow-Headers: Content-Type');
 
-// Responder OPTIONS para CORS preflight
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit;
-}
-
-require_once __DIR__ . '/../../database.php';
-require_once __DIR__ . '/../../includes/DecryptMiddleware.php';
+date_default_timezone_set('America/Sao_Paulo');
 
 try {
-    if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
-        DecryptMiddleware::sendError('Método não permitido', 405);
-        exit;
+    // Conectar diretamente ao banco usando variáveis de ambiente
+    $db_host = $_ENV['DB_HOST'] ?? getenv('DB_HOST');
+    $db_user = $_ENV['DB_USER'] ?? getenv('DB_USER');
+    $db_pass = $_ENV['DB_PASSWORD'] ?? getenv('DB_PASSWORD');
+    $db_name = $_ENV['DB_NAME'] ?? getenv('DB_NAME');
+    $db_port = $_ENV['DB_PORT'] ?? getenv('DB_PORT');
+    
+    $conn = mysqli_init();
+    
+    if (!$conn) {
+        throw new Exception("mysqli_init falhou");
     }
     
-    // Conectar ao banco
-    $conn = getDbConnection();
+    mysqli_ssl_set($conn, NULL, NULL, NULL, NULL, NULL);
     
-    // Buscar horário de reset
-    $stmt = $conn->prepare("
-        SELECT setting_value 
-        FROM system_settings 
-        WHERE setting_key = 'reset_time'
-    ");
+    if (!mysqli_real_connect($conn, $db_host, $db_user, $db_pass, $db_name, $db_port, NULL, MYSQLI_CLIENT_SSL)) {
+        throw new Exception("Conexão falhou: " . mysqli_connect_error());
+    }
+    
+    mysqli_set_charset($conn, "utf8mb4");
+    
+    // Buscar horário de reset configurado
+    $stmt = $conn->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'reset_time' LIMIT 1");
+    
+    if (!$stmt) {
+        throw new Exception("Prepare failed: " . $conn->error);
+    }
+    
     $stmt->execute();
     $result = $stmt->get_result();
+    $row = $result->fetch_assoc();
     
-    $resetTime = '21:00'; // Valor padrão
-    if ($result->num_rows > 0) {
-        $row = $result->fetch_assoc();
-        $resetTime = $row['setting_value'];
-    }
+    $reset_time = $row ? $row['setting_value'] : '21:00';
     
-    // Extrair hora e minuto
-    list($hour, $minute) = explode(':', $resetTime);
+    list($reset_hour, $reset_minute) = explode(':', $reset_time);
     
-    // Enviar resposta criptografada
-    DecryptMiddleware::sendSuccess([
-        'reset_time' => $resetTime,
-        'reset_hour' => (int)$hour,
-        'reset_minute' => (int)$minute,
-        'timezone' => 'America/Sao_Paulo'
-    ], true); // true = criptografar resposta
+    $stmt->close();
+    $conn->close();
+    
+    // Retornar configurações
+    echo json_encode([
+        'success' => true,
+        'data' => [
+            'reset_time' => $reset_time,
+            'reset_hour' => (int)$reset_hour,
+            'reset_minute' => (int)$reset_minute,
+            'timezone' => 'America/Sao_Paulo'
+        ]
+    ]);
     
 } catch (Exception $e) {
-    error_log("Config endpoint error: " . $e->getMessage());
-    DecryptMiddleware::sendError('Erro ao buscar configurações: ' . $e->getMessage(), 500);
+    http_response_code(500);
+    echo json_encode([
+        'success' => false,
+        'error' => 'Erro ao buscar configurações',
+        'message' => $e->getMessage()
+    ]);
 }
 ?>
