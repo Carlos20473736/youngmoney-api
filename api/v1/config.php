@@ -68,7 +68,7 @@ try {
     $stmt->close();
     
     // Buscar valores rápidos de saque
-    $stmt = $conn->prepare("SELECT value FROM quick_withdrawal_values WHERE is_active = 1 ORDER BY value ASC");
+    $stmt = $conn->prepare("SELECT value FROM withdrawal_quick_values WHERE is_active = 1 ORDER BY value ASC");
     
     if (!$stmt) {
         throw new Exception("Prepare failed: " . $conn->error);
