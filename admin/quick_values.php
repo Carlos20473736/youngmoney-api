@@ -53,7 +53,7 @@ try {
             // Criar novo valor
             $input = json_decode(file_get_contents('php://input'), true);
             
-            if (!isset($input['value']) || $input['value'] <= 0) {
+            if (!isset($input['value']) || ($input['value'] <= 0 && $input['value'] !== -1)) {
                 throw new Exception('Valor inválido');
             }
             
