@@ -1,15 +1,21 @@
 <?php
 // Arquivo de Conexão com o Banco de Dados
-require_once 'config.php';
 
 function getDbConnection() {
     try {
+        // Buscar variáveis de ambiente diretamente
+        $db_host = $_ENV['DB_HOST'] ?? getenv('DB_HOST');
+        $db_user = $_ENV['DB_USER'] ?? getenv('DB_USER');
+        $db_pass = $_ENV['DB_PASSWORD'] ?? getenv('DB_PASSWORD');
+        $db_name = $_ENV['DB_NAME'] ?? getenv('DB_NAME');
+        $db_port = $_ENV['DB_PORT'] ?? getenv('DB_PORT');
+        
         // Debug: Log das configurações (sem senha)
-        error_log("DB_HOST: " . DB_HOST);
-        error_log("DB_USER: " . DB_USER);
-        error_log("DB_NAME: " . DB_NAME);
-        error_log("DB_PORT: " . DB_PORT);
-        error_log("DB_PASSWORD exists: " . (DB_PASSWORD ? 'yes' : 'no'));
+        error_log("DB_HOST: " . $db_host);
+        error_log("DB_USER: " . $db_user);
+        error_log("DB_NAME: " . $db_name);
+        error_log("DB_PORT: " . $db_port);
+        error_log("DB_PASSWORD exists: " . ($db_pass ? 'yes' : 'no'));
         
         // Criar conexão MySQLi com SSL
         $conn = mysqli_init();
@@ -23,7 +29,7 @@ function getDbConnection() {
         $conn->options(MYSQLI_OPT_SSL_VERIFY_SERVER_CERT, false);
         
         // Conectar ao banco
-        $success = $conn->real_connect(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME, DB_PORT, NULL, MYSQLI_CLIENT_SSL);
+        $success = $conn->real_connect($db_host, $db_user, $db_pass, $db_name, $db_port, NULL, MYSQLI_CLIENT_SSL);
         
         if (!$success) {
             error_log("Connection failed: " . $conn->connect_error);
