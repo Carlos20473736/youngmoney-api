@@ -88,6 +88,28 @@ try {
     }
     
     $stmt->close();
+    
+    // Buscar valores dos prêmios da roleta
+    $stmt = $conn->prepare("SELECT setting_key, setting_value FROM roulette_settings WHERE setting_key LIKE 'prize_%' ORDER BY setting_key ASC");
+    
+    if (!$stmt) {
+        throw new Exception("Prepare failed: " . $conn->error);
+    }
+    
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    $prize_values = [];
+    while ($row = $result->fetch_assoc()) {
+        $prize_values[] = (int)$row['setting_value'];
+    }
+    
+    // Se não houver valores, usar padrão
+    if (empty($prize_values)) {
+        $prize_values = [100, 250, 500, 750, 1000, 1500, 2000, 5000];
+    }
+    
+    $stmt->close();
     $conn->close();
     
     // Enviar resposta criptografada
@@ -96,7 +118,8 @@ try {
         'reset_hour' => (int)$reset_hour,
         'reset_minute' => (int)$reset_minute,
         'timezone' => 'America/Sao_Paulo',
-        'quick_withdrawal_values' => $quick_values
+        'quick_withdrawal_values' => $quick_values,
+        'prize_values' => $prize_values
     ], true); // true = criptografar resposta
     
 } catch (Exception $e) {
