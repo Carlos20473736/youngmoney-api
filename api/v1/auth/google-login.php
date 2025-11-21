@@ -38,6 +38,7 @@ try {
     }
     
     $googleToken = $data['google_token'];
+    $invitedByCode = $data['invited_by_code'] ?? null;
     
     // 3. VERIFICAR TOKEN DO GOOGLE (rápido - sem I/O)
     $tokenParts = explode('.', $googleToken);
@@ -117,15 +118,29 @@ try {
         // CRIAR NOVO USUÁRIO
         $inviteCode = 'YM' . strtoupper(substr(bin2hex(random_bytes(4)), 0, 6));
         
+        // Processar código de convite se fornecido
+        $invitedBy = null;
+        if ($invitedByCode) {
+            $stmtInvite = $conn->prepare("SELECT id FROM users WHERE invite_code = ?");
+            $stmtInvite->bind_param("s", $invitedByCode);
+            $stmtInvite->execute();
+            $resultInvite = $stmtInvite->get_result();
+            if ($resultInvite->num_rows > 0) {
+                $inviter = $resultInvite->fetch_assoc();
+                $invitedBy = $inviter['id'];
+            }
+            $stmtInvite->close();
+        }
+        
         // INSERT com todos os dados de uma vez
         $stmt = $conn->prepare("
             INSERT INTO users (
                 google_id, email, name, profile_picture, 
-                invite_code, token, master_seed, session_salt,
+                invite_code, invited_by, token, master_seed, session_salt,
                 points, created_at, salt_updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, '', ?, 0, NOW(), NOW())
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, '', ?, 0, NOW(), NOW())
         ");
-        $stmt->bind_param("sssssss", $googleId, $email, $name, $profilePicture, $inviteCode, $token, $sessionSalt);
+        $stmt->bind_param("sssssiis", $googleId, $email, $name, $profilePicture, $inviteCode, $invitedBy, $token, $sessionSalt);
         $stmt->execute();
         $userId = $conn->insert_id;
         
