@@ -19,7 +19,7 @@ try {
     // Buscar últimos 100 saques aprovados/processados com informações do usuário
     $stmt = $conn->prepare("
         SELECT 
-            u.name,
+            u.email,
             u.profile_picture,
             w.amount,
             w.created_at
@@ -35,8 +35,13 @@ try {
     
     $withdrawals = [];
     while ($row = $result->fetch_assoc()) {
+        // Mascarar o email: mostrar primeiros 2 caracteres + *** + domínio
+        $email = $row['email'];
+        $emailParts = explode('@', $email);
+        $maskedEmail = substr($emailParts[0], 0, 2) . '***@' . $emailParts[1];
+        
         $withdrawals[] = [
-            'name' => $row['name'],
+            'email' => $maskedEmail,
             'photo_url' => $row['profile_picture'],
             'amount' => floatval($row['amount']),
             'created_at' => $row['created_at']
