@@ -35,10 +35,20 @@ try {
     
     $withdrawals = [];
     while ($row = $result->fetch_assoc()) {
-        // Mascarar o email: mostrar primeiros 2 caracteres + *** + domínio
+        // Mascarar o email: esconder os últimos 4 caracteres antes do @
         $email = $row['email'];
         $emailParts = explode('@', $email);
-        $maskedEmail = substr($emailParts[0], 0, 2) . '***@' . $emailParts[1];
+        $localPart = $emailParts[0];
+        $domain = $emailParts[1];
+        
+        // Se o email tiver mais de 4 caracteres antes do @, esconde os últimos 4
+        if (strlen($localPart) > 4) {
+            $visiblePart = substr($localPart, 0, -4);
+            $maskedEmail = $visiblePart . '****@' . $domain;
+        } else {
+            // Se tiver 4 ou menos, mostra apenas o primeiro caractere
+            $maskedEmail = substr($localPart, 0, 1) . '****@' . $domain;
+        }
         
         $withdrawals[] = [
             'email' => $maskedEmail,
