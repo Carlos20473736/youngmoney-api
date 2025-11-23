@@ -25,7 +25,70 @@ if ($token !== $CRON_TOKEN) {
 }
 
 // Incluir configuração do banco
-require_once __DIR__ . '/db/config.php';
+require_once __DIR__ . '/database.php';
+
+// Obter conexão
+$conn = getDbConnection();
+$pdo = null;
+
+// Converter MySQLi para PDO-like para manter compatibilidade
+class PDOWrapper {
+    private $conn;
+    
+    public function __construct($conn) {
+        $this->conn = $conn;
+    }
+    
+    public function query($sql) {
+        $result = $this->conn->query($sql);
+        if (!$result) {
+            throw new Exception($this->conn->error);
+        }
+        return new ResultWrapper($result);
+    }
+    
+    public function prepare($sql) {
+        $stmt = $this->conn->prepare($sql);
+        if (!$stmt) {
+            throw new Exception($this->conn->error);
+        }
+        return new StmtWrapper($stmt);
+    }
+}
+
+class ResultWrapper {
+    private $result;
+    
+    public function __construct($result) {
+        $this->result = $result;
+    }
+    
+    public function fetch($mode = null) {
+        return $this->result->fetch_assoc();
+    }
+}
+
+class StmtWrapper {
+    private $stmt;
+    
+    public function __construct($stmt) {
+        $this->stmt = $stmt;
+    }
+    
+    public function execute($params = []) {
+        if (!empty($params)) {
+            $types = str_repeat('s', count($params));
+            $this->stmt->bind_param($types, ...$params);
+        }
+        return $this->stmt->execute();
+    }
+    
+    public function rowCount() {
+        return $this->stmt->affected_rows;
+    }
+}
+
+$pdo = new PDOWrapper($conn);
 
 try {
     // Obter configurações do sistema
