@@ -156,15 +156,10 @@ try {
         $stmt->execute();
         $affected = $stmt->rowCount();
         
-        // Atualizar data do último reset (formato chave-valor)
-        $stmt = $pdo->prepare("UPDATE system_settings SET setting_value = ? WHERE setting_key = 'last_reset_date'");
-        $stmt->execute([$current_date]);
-        
-        // Se não existir, inserir
-        if ($stmt->rowCount() == 0) {
-            $stmt = $pdo->prepare("INSERT INTO system_settings (setting_key, setting_value) VALUES ('last_reset_date', ?)");
-            $stmt->execute([$current_date]);
-        }
+        // Atualizar data do último reset usando INSERT ON DUPLICATE KEY UPDATE
+        $update_stmt = $conn->prepare("INSERT INTO system_settings (setting_key, setting_value) VALUES ('last_reset_date', ?) ON DUPLICATE KEY UPDATE setting_value = ?");
+        $update_stmt->bind_param('ss', $current_date, $current_date);
+        $update_stmt->execute();
         
         // Registrar no log
         $stmt = $pdo->prepare("

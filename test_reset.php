@@ -88,17 +88,11 @@ try {
         $result = $conn->query("SELECT COUNT(*) as total FROM users WHERE daily_points > 0");
         $after = $result->fetch_assoc();
         
-        // Atualizar last_reset_date
+        // Atualizar last_reset_date usando INSERT ON DUPLICATE KEY UPDATE
         $current_date = date('Y-m-d');
-        $stmt = $conn->prepare("UPDATE system_settings SET setting_value = ? WHERE setting_key = 'last_reset_date'");
-        $stmt->bind_param('s', $current_date);
+        $stmt = $conn->prepare("INSERT INTO system_settings (setting_key, setting_value) VALUES ('last_reset_date', ?) ON DUPLICATE KEY UPDATE setting_value = ?");
+        $stmt->bind_param('ss', $current_date, $current_date);
         $stmt->execute();
-        
-        if ($stmt->affected_rows == 0) {
-            $stmt = $conn->prepare("INSERT INTO system_settings (setting_key, setting_value) VALUES ('last_reset_date', ?)");
-            $stmt->bind_param('s', $current_date);
-            $stmt->execute();
-        }
         
         $response['force_reset_executed'] = true;
         $response['reset_details'] = [
