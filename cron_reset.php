@@ -91,14 +91,6 @@ class StmtWrapper {
 $pdo = new PDOWrapper($conn);
 
 try {
-    // Obter configurações do sistema
-    $stmt = $pdo->query("SELECT * FROM system_settings WHERE id = 1");
-    $settings = $stmt->fetch(PDO::FETCH_ASSOC);
-    
-    if (!$settings) {
-        throw new Exception('Configurações do sistema não encontradas');
-    }
-    
     // Configurar timezone
     date_default_timezone_set('America/Sao_Paulo');
     
@@ -108,14 +100,19 @@ try {
     $current_minute = (int)$now->format('i');
     $current_date = $now->format('Y-m-d');
     
-    // Obter horário de reset configurado
-    $reset_time = $settings['reset_time'] ?? '21:00';
+    // Obter horário de reset configurado (formato chave-valor)
+    $stmt = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'reset_time' LIMIT 1");
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    $reset_time = $row ? $row['setting_value'] : '21:00';
+    
     list($reset_hour, $reset_minute) = explode(':', $reset_time);
     $reset_hour = (int)$reset_hour;
     $reset_minute = (int)$reset_minute;
     
     // Obter data do último reset
-    $last_reset_date = $settings['last_reset_date'] ?? null;
+    $stmt = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'last_reset_date' LIMIT 1");
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    $last_reset_date = $row ? $row['setting_value'] : null;
     
     // Verificar se precisa resetar
     $needs_reset = false;
@@ -159,9 +156,15 @@ try {
         $stmt->execute();
         $affected = $stmt->rowCount();
         
-        // Atualizar data do último reset
-        $stmt = $pdo->prepare("UPDATE system_settings SET last_reset_date = ? WHERE id = 1");
+        // Atualizar data do último reset (formato chave-valor)
+        $stmt = $pdo->prepare("UPDATE system_settings SET setting_value = ? WHERE setting_key = 'last_reset_date'");
         $stmt->execute([$current_date]);
+        
+        // Se não existir, inserir
+        if ($stmt->rowCount() == 0) {
+            $stmt = $pdo->prepare("INSERT INTO system_settings (setting_key, setting_value) VALUES ('last_reset_date', ?)");
+            $stmt->execute([$current_date]);
+        }
         
         // Registrar no log
         $stmt = $pdo->prepare("
