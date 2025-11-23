@@ -70,13 +70,9 @@ try {
     ");
     $stmt->execute([$current_date, $current_date]);
     
-    // Registrar no log
-    $stmt = $pdo->prepare("
-        INSERT INTO admin_logs (admin_id, action, details, ip_address, created_at) 
-        VALUES (0, 'ranking_reset_test', ?, ?, NOW())
-    ");
+    // Log simplificado (sem tabela admin_logs)
     $details = "Reset forçado via teste. Usuários afetados: $affected. Pontos antes: $beforePoints, depois: $afterPoints";
-    $stmt->execute([$details, $_SERVER['REMOTE_ADDR'] ?? 'unknown']);
+    error_log($details);
     
     echo json_encode([
         'success' => true,
