@@ -94,7 +94,7 @@ try {
         $stmt->bind_param('ss', $current_date, $current_date);
         $stmt->execute();
         
-        // REGISTRAR NO LOG
+        // REGISTRAR NO LOG (se a tabela existir)
         $log_details = json_encode([
             'type' => 'auto_reset',
             'reset_time' => $reset_time,
@@ -104,9 +104,13 @@ try {
             'timestamp' => $now->format('Y-m-d H:i:s')
         ]);
         
-        $stmt = $conn->prepare("INSERT INTO admin_logs (admin_id, action, details, ip_address, created_at) VALUES (0, 'auto_ranking_reset', ?, '0.0.0.0', NOW())");
-        $stmt->bind_param('s', $log_details);
-        $stmt->execute();
+        try {
+            $stmt = $conn->prepare("INSERT INTO admin_logs (admin_id, action, details, created_at) VALUES (0, 'auto_ranking_reset', ?, NOW())");
+            $stmt->bind_param('s', $log_details);
+            $stmt->execute();
+        } catch (Exception $log_error) {
+            // Ignorar erro de log
+        }
         
         $response['reset_executed'] = true;
         $response['users_with_points_before'] = (int)$before['total'];
