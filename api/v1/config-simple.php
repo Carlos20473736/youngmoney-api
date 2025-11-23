@@ -77,6 +77,8 @@ try {
             'reset_hour' => (int)$reset_hour,
             'reset_minute' => (int)$reset_minute,
             'timezone' => 'America/Sao_Paulo',
+            'server_timestamp' => time(), // Unix timestamp em segundos
+            'server_time' => date('H:i:s'), // Hora formatada HH:mm:ss
             'quick_withdrawal_values' => $quick_values
         ]
     ]);
