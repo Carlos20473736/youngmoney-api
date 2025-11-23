@@ -22,7 +22,24 @@ try {
     // Conectar ao banco
     require_once __DIR__ . '/database.php';
     
-    $pdo = getConnection();
+    $conn = getDbConnection();
+    
+    // Converter MySQLi para PDO para usar prepared statements
+    $db_host = $_ENV['DB_HOST'] ?? getenv('DB_HOST');
+    $db_user = $_ENV['DB_USER'] ?? getenv('DB_USER');
+    $db_pass = $_ENV['DB_PASSWORD'] ?? getenv('DB_PASSWORD');
+    $db_name = $_ENV['DB_NAME'] ?? getenv('DB_NAME');
+    $db_port = $_ENV['DB_PORT'] ?? getenv('DB_PORT');
+    
+    $pdo = new PDO(
+        "mysql:host=$db_host;port=$db_port;dbname=$db_name;charset=utf8mb4",
+        $db_user,
+        $db_pass,
+        [
+            PDO::MYSQL_ATTR_SSL_CA => false,
+            PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT => false
+        ]
+    );
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     
     // Buscar quantos usuários têm pontos antes do reset
