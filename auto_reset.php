@@ -1,131 +1,143 @@
 <?php
 /**
- * AUTO RESET - Endpoint Simplificado para Reset Automático
+ * Endpoint de Reset Automático do Ranking Diário
+ * YoungMoney API - Railway
  * 
- * Este endpoint reseta o ranking diariamente de forma automática.
- * Executa SEMPRE que o horário configurado é atingido.
+ * Este endpoint reseta o ranking diário quando chamado pelo cron-job.org
+ * Versão simplificada: Sempre reseta quando chamado (sem verificação de horário)
  */
 
-header('Content-Type: application/json');
+header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization');
 
-// Token de segurança
-define('CRON_TOKEN', 'ym_auto_reset_2024_secure_xyz');
+// Configurar timezone para São Paulo (GMT-3)
+date_default_timezone_set('America/Sao_Paulo');
 
-// Verificar token
-$token = $_GET['token'] ?? '';
-if ($token !== CRON_TOKEN) {
-    http_response_code(401);
-    die(json_encode(['success' => false, 'error' => 'Token inválido']));
+// Tratar requisições OPTIONS (CORS preflight)
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
 }
 
-// Incluir configuração do banco
-require_once __DIR__ . '/database.php';
+// Permitir GET ou POST
+if ($_SERVER['REQUEST_METHOD'] !== 'GET' && $_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405);
+    echo json_encode([
+        'success' => false,
+        'error' => 'Método não permitido. Use GET ou POST.'
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+// Validar token de segurança
+$token = $_GET['token'] ?? $_POST['token'] ?? '';
+$expectedToken = 'ym_auto_reset_2024_secure_xyz'; // Mesmo token que está no cron-job.org
+
+if ($token !== $expectedToken) {
+    http_response_code(401);
+    echo json_encode([
+        'success' => false,
+        'error' => 'Token de autenticação inválido'
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+// Configurações do banco de dados
+$host = getenv('DB_HOST') ?: 'localhost';
+$port = getenv('DB_PORT') ?: '3306';
+$dbname = getenv('DB_NAME') ?: 'youngmoney';
+$username = getenv('DB_USER') ?: 'root';
+$password = getenv('DB_PASS') ?: '';
 
 try {
-    // Obter conexão
-    $conn = getDbConnection();
+    // Conectar ao banco de dados
+    $dsn = "mysql:host=$host;port=$port;dbname=$dbname;charset=utf8mb4";
+    $pdo = new PDO($dsn, $username, $password, [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+    ]);
     
-    // Configurar timezone
-    date_default_timezone_set('America/Sao_Paulo');
+    // Iniciar transação
+    $pdo->beginTransaction();
     
-    $now = new DateTime();
-    $current_time = $now->format('H:i');
-    $current_date = $now->format('Y-m-d');
+    // Contar usuários com pontos diários antes do reset
+    $stmt = $pdo->query("SELECT COUNT(*) as total FROM users WHERE daily_points > 0");
+    $result = $stmt->fetch();
+    $usersAffected = $result['total'] ?? 0;
     
-    // Obter configurações do sistema
-    $result = $conn->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('reset_time', 'last_reset_date')");
+    // Resetar pontos diários de todos os usuários
+    $stmt = $pdo->exec("UPDATE users SET daily_points = 0");
     
-    $settings = [];
-    while ($row = $result->fetch_assoc()) {
-        $settings[$row['setting_key']] = $row['setting_value'];
+    // Registrar log do reset (se a tabela existir)
+    try {
+        $stmt = $pdo->prepare("
+            INSERT INTO ranking_reset_logs 
+            (reset_type, triggered_by, users_affected, status, reset_time) 
+            VALUES ('automatic', 'cron-job.org', ?, 'success', NOW())
+        ");
+        $stmt->execute([$usersAffected]);
+    } catch (Exception $e) {
+        // Tabela de log pode não existir, ignorar erro
     }
     
-    $reset_time = $settings['reset_time'] ?? '02:30';
-    $last_reset_date = $settings['last_reset_date'] ?? null;
-    
-    // Verificar se precisa resetar
-    $needs_reset = false;
-    $reason = '';
-    
-    // Converter horários para minutos
-    list($reset_h, $reset_m) = explode(':', $reset_time);
-    list($current_h, $current_m) = explode(':', $current_time);
-    
-    $reset_minutes = ((int)$reset_h * 60) + (int)$reset_m;
-    $current_minutes = ((int)$current_h * 60) + (int)$current_m;
-    
-    // Se passou do horário E ainda não resetou hoje
-    if ($current_minutes >= $reset_minutes && $last_reset_date !== $current_date) {
-        $needs_reset = true;
-        $reason = 'Horário atingido e não resetou hoje';
-    } else if ($last_reset_date === $current_date) {
-        $reason = 'Já resetou hoje';
-    } else {
-        $reason = 'Ainda não chegou no horário';
+    // Atualizar última data de reset (se a tabela de configurações existir)
+    try {
+        $currentDate = date('Y-m-d');
+        $stmt = $pdo->prepare("
+            INSERT INTO system_settings (setting_key, setting_value) 
+            VALUES ('last_reset_date', ?)
+            ON DUPLICATE KEY UPDATE setting_value = ?
+        ");
+        $stmt->execute([$currentDate, $currentDate]);
+    } catch (Exception $e) {
+        // Tabela pode não existir, ignorar erro
     }
     
-    $response = [
+    // Commit da transação
+    $pdo->commit();
+    
+    // Resposta de sucesso
+    echo json_encode([
         'success' => true,
-        'timestamp' => $now->format('Y-m-d H:i:s'),
-        'current_time' => $current_time,
-        'reset_time' => $reset_time,
-        'last_reset_date' => $last_reset_date,
-        'current_date' => $current_date,
-        'needs_reset' => $needs_reset,
-        'reason' => $reason
-    ];
+        'message' => 'Ranking diário resetado com sucesso!',
+        'data' => [
+            'users_affected' => $usersAffected,
+            'reset_time' => date('Y-m-d H:i:s'),
+            'reset_hour' => date('H:i'),
+            'timezone' => 'America/Sao_Paulo (GMT-3)',
+            'timestamp' => time()
+        ]
+    ], JSON_UNESCAPED_UNICODE);
     
-    if ($needs_reset) {
-        // CONTAR USUÁRIOS ANTES
-        $result = $conn->query("SELECT COUNT(*) as total FROM users WHERE daily_points > 0");
-        $before = $result->fetch_assoc();
-        
-        // RESETAR PONTOS - QUERY SIMPLES E DIRETA
-        $conn->query("UPDATE users SET daily_points = 0 WHERE daily_points > 0");
-        $affected = $conn->affected_rows;
-        
-        // CONTAR USUÁRIOS DEPOIS
-        $result = $conn->query("SELECT COUNT(*) as total FROM users WHERE daily_points > 0");
-        $after = $result->fetch_assoc();
-        
-        // ATUALIZAR DATA DO ÚLTIMO RESET
-        $stmt = $conn->prepare("INSERT INTO system_settings (setting_key, setting_value) VALUES ('last_reset_date', ?) ON DUPLICATE KEY UPDATE setting_value = ?");
-        $stmt->bind_param('ss', $current_date, $current_date);
-        $stmt->execute();
-        
-        // REGISTRAR NO LOG (se a tabela existir)
-        $log_details = json_encode([
-            'type' => 'auto_reset',
-            'reset_time' => $reset_time,
-            'users_affected' => $affected,
-            'users_before' => (int)$before['total'],
-            'users_after' => (int)$after['total'],
-            'timestamp' => $now->format('Y-m-d H:i:s')
-        ]);
-        
-        try {
-            $stmt = $conn->prepare("INSERT INTO admin_logs (admin_id, action, details, created_at) VALUES (0, 'auto_ranking_reset', ?, NOW())");
-            $stmt->bind_param('s', $log_details);
-            $stmt->execute();
-        } catch (Exception $log_error) {
-            // Ignorar erro de log
-        }
-        
-        $response['reset_executed'] = true;
-        $response['users_with_points_before'] = (int)$before['total'];
-        $response['users_affected'] = $affected;
-        $response['users_with_points_after'] = (int)$after['total'];
-        $response['message'] = '✅ RESET EXECUTADO COM SUCESSO!';
+} catch (PDOException $e) {
+    // Rollback em caso de erro
+    if (isset($pdo) && $pdo->inTransaction()) {
+        $pdo->rollBack();
     }
     
-    echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+    error_log("Erro no reset do ranking: " . $e->getMessage());
     
-} catch (Exception $e) {
     http_response_code(500);
     echo json_encode([
         'success' => false,
-        'error' => $e->getMessage(),
-        'trace' => $e->getTraceAsString()
-    ], JSON_PRETTY_PRINT);
+        'error' => 'Erro ao resetar ranking',
+        'details' => $e->getMessage()
+    ], JSON_UNESCAPED_UNICODE);
+    
+} catch (Exception $e) {
+    // Rollback em caso de erro
+    if (isset($pdo) && $pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
+    
+    error_log("Erro no reset do ranking: " . $e->getMessage());
+    
+    http_response_code(500);
+    echo json_encode([
+        'success' => false,
+        'error' => 'Erro ao resetar ranking',
+        'details' => $e->getMessage()
+    ], JSON_UNESCAPED_UNICODE);
 }
