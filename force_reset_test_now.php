@@ -61,15 +61,14 @@ try {
     $stmt = $pdo->query("SELECT SUM(daily_points) as total_points FROM users");
     $afterPoints = $stmt->fetch(PDO::FETCH_ASSOC)['total_points'];
     
-    // Atualizar data do último reset
+    // Atualizar data do último reset (usando INSERT ... ON DUPLICATE KEY UPDATE)
     $current_date = date('Y-m-d');
-    $stmt = $pdo->prepare("UPDATE system_settings SET setting_value = ? WHERE setting_key = 'last_reset_date'");
-    $stmt->execute([$current_date]);
-    
-    if ($stmt->rowCount() == 0) {
-        $stmt = $pdo->prepare("INSERT INTO system_settings (setting_key, setting_value) VALUES ('last_reset_date', ?)");
-        $stmt->execute([$current_date]);
-    }
+    $stmt = $pdo->prepare("
+        INSERT INTO system_settings (setting_key, setting_value) 
+        VALUES ('last_reset_date', ?) 
+        ON DUPLICATE KEY UPDATE setting_value = ?
+    ");
+    $stmt->execute([$current_date, $current_date]);
     
     // Registrar no log
     $stmt = $pdo->prepare("
