@@ -4,6 +4,8 @@
  * Função helper para validar headers de segurança em qualquer endpoint
  */
 
+require_once __DIR__ . '/xreq_manager.php';
+
 /**
  * Valida headers de segurança obrigatórios
  * 
@@ -47,12 +49,14 @@ function validateSecurityHeaders($conn, $user) {
     
     // Validar X-REQ (token rotativo)
     $xReq = $allHeaders['X-REQ'];
-    if (strlen($xReq) < 10) {
+    try {
+        validateXReqToken($conn, $user, $xReq);
+    } catch (Exception $e) {
         http_response_code(403);
         echo json_encode([
             'status' => 'error',
-            'message' => 'Invalid X-REQ (too short)',
-            'code' => 'INVALID_SECURITY_HEADER'
+            'message' => 'X-REQ validation failed: ' . $e->getMessage(),
+            'code' => 'INVALID_XREQ_TOKEN'
         ]);
         exit;
     }

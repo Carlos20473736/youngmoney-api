@@ -18,6 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 require_once __DIR__ . '/../database.php';
 require_once __DIR__ . '/../includes/auth_helper.php';
 require_once __DIR__ . '/../includes/security_validation_helper.php';
+require_once __DIR__ . '/../includes/xreq_manager.php';
 
 try {
     $conn = getDbConnection();
@@ -46,8 +47,12 @@ try {
             $greeting = 'BOA NOITE';
         }
         
+        // Gerar novo x-req para próxima requisição
+        $newXReq = generateNewXReq($conn, $user);
+        header("X-New-Req: $newXReq");
+        
         // Retornar perfil completo do usuário
-        sendSuccess([
+        $profileData = [
             'id' => (int)$user['id'],
             'email' => $user['email'],
             'name' => $user['name'],
@@ -57,8 +62,11 @@ try {
             'invite_code' => $user['invite_code'],
             'greeting' => $greeting,
             'created_at' => $user['created_at'],
-            'updated_at' => $user['updated_at']
-        ]);
+            'updated_at' => $user['updated_at'],
+            'x_req' => $newXReq
+        ];
+        
+        sendSuccess($profileData);
         
     } elseif ($method === 'PUT') {
         // Atualizar perfil do usuário
