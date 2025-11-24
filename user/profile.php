@@ -27,7 +27,9 @@ try {
     $allHeaders = [];
     foreach ($_SERVER as $key => $value) {
         if (substr($key, 0, 5) == 'HTTP_') {
-            $header = str_replace(' ', '-', ucwords(str_replace('_', ' ', strtolower(substr($key, 5)))));
+            // Converter HTTP_X_DEVICE_ID para X-Device-ID (preservando maiúsculas)
+            $header = substr($key, 5); // Remove HTTP_
+            $header = str_replace('_', '-', $header); // Substitui _ por -
             $allHeaders[$header] = $value;
         }
     }
