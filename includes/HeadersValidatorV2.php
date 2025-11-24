@@ -108,14 +108,16 @@ class HeadersValidatorV2 {
      * 2. Validar identificação do dispositivo (5 headers)
      */
     private function validateDeviceIdentification() {
-        // X-Device-ID
-        $deviceId = $this->headers['X-Device-ID'];
-        if (!preg_match('/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i', $deviceId)) {
-            throw new Exception("X-Device-ID inválido (deve ser UUID)");
+        // X-DEVICE-ID (recomendado, não obrigatório)
+        if (isset($this->headers['X-DEVICE-ID'])) {
+            $deviceId = $this->headers['X-DEVICE-ID'];
+            if (!empty($deviceId) && !preg_match('/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i', $deviceId)) {
+                $this->alerts[] = "X-DEVICE-ID inválido (deve ser UUID)";
+            } else if (!empty($deviceId)) {
+                // Verificar se device_id está registrado para este usuário
+                $this->validateDeviceRegistration($deviceId);
+            }
         }
-        
-        // Verificar se device_id está registrado para este usuário
-        $this->validateDeviceRegistration($deviceId);
         
         // X-App-Version
         if (isset($this->headers['X-App-Version'])) {
