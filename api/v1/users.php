@@ -3,10 +3,14 @@
 
 header("Content-Type: application/json");
 require_once '../../database.php';
-require_once __DIR__ . '/../../includes/ResponseHelper.php';
+require_once '../../middleware/auto_reset.php';
+require_once __DIR__ . '/../xreq/validate.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
 $conn = getDbConnection();
+
+// Verificar e fazer reset automático se necessário
+checkAndResetRanking($conn);
 
 switch ($method) {
     case 'GET':
@@ -14,18 +18,21 @@ switch ($method) {
         // Exemplo: /api/v1/users.php?id=1
         if (isset($_GET['id'])) {
             $userId = intval($_GET['id']);
-            $stmt = $conn->prepare("SELECT id, username, email, name, profile_picture, points, created_at FROM users WHERE id = ?");
+            $stmt = $conn->prepare("SELECT id, username, email, profile_picture, points, created_at FROM users WHERE id = ?");
             $stmt->bind_param("i", $userId);
             $stmt->execute();
             $result = $stmt->get_result();
             if ($result->num_rows > 0) {
-                ResponseHelper::success($result->fetch_assoc());
+                echo json_encode($result->fetch_assoc());
             } else {
-                ResponseHelper::error('User not found', 404);
+                http_response_code(404);
+                echo json_encode(['message' => 'User not found']);
             }
             $stmt->close();
         } else {
-            ResponseHelper::error('User ID is required', 400);
+            // Lógica para listar todos os usuários (cuidado com a privacidade)
+            http_response_code(400);
+            echo json_encode(['message' => 'User ID is required']);
         }
         break;
 
@@ -42,23 +49,24 @@ switch ($method) {
             $stmt->bind_param("sss", $username, $password, $email);
 
             if ($stmt->execute()) {
-                ResponseHelper::success([
-                    'message' => 'User created successfully',
-                    'user_id' => $conn->insert_id
-                ], 201);
+                http_response_code(201);
+                echo json_encode(['message' => 'User created successfully', 'user_id' => $conn->insert_id]);
             } else {
-                ResponseHelper::error('Failed to create user: ' . $stmt->error, 500);
+                http_response_code(500);
+                echo json_encode(['message' => 'Failed to create user', 'error' => $stmt->error]);
             }
             $stmt->close();
         } else {
-            ResponseHelper::error('Username, password, and email are required', 400);
+            http_response_code(400);
+            echo json_encode(['message' => 'Username, password, and email are required']);
         }
         break;
 
     // Implementar PUT para atualizar e DELETE para excluir usuários conforme necessário
 
     default:
-        ResponseHelper::error('Method Not Allowed', 405);
+        http_response_code(405);
+        echo json_encode(['message' => 'Method Not Allowed']);
         break;
 }
 
