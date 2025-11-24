@@ -3,14 +3,9 @@
 
 header("Content-Type: application/json");
 require_once '../../database.php';
-require_once '../../middleware/auto_reset.php';
-require_once __DIR__ . '/../xreq/validate.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
 $conn = getDbConnection();
-
-// Verificar e fazer reset automático se necessário
-checkAndResetRanking($conn);
 
 switch ($method) {
     case 'GET':

@@ -30,13 +30,9 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' && $_SERVER['REQUEST_METHOD'] !== 'GET
 
 // Incluir configuração do banco de dados
 require_once __DIR__ . '/../../database.php';
-require_once __DIR__ . '/../../middleware/auto_reset.php';
 
 // Obter conexão
 $conn = getDbConnection();
-
-// Verificar e fazer reset automático se necessário
-checkAndResetRanking($conn);
 
 // Função para validar token
 function getUserFromToken($conn) {
