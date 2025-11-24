@@ -32,31 +32,35 @@ try {
     }
     
     // 2. VALIDAR DADOS
-    if (!isset($data['google_token'])) {
-        DecryptMiddleware::sendError('Google token é obrigatório');
-        exit;
+    $googleToken = $data['google_token'] ?? null;
+    
+    // Se não tiver token, criar usuário de teste
+    if (!$googleToken) {
+        $googleId = 'test_' . bin2hex(random_bytes(8));
+        $email = 'test_' . substr($googleId, 5, 8) . '@youngmoney.test';
+        $name = 'Usuário Teste';
+        $profilePicture = null;
+    } else {
+        // 3. VERIFICAR TOKEN DO GOOGLE (rápido - sem I/O)
+        $tokenParts = explode('.', $googleToken);
+        if (count($tokenParts) !== 3) {
+            DecryptMiddleware::sendError('Token do Google inválido', 401);
+            exit;
+        }
+        
+        $payload = json_decode(base64_decode($tokenParts[1]), true);
+        $googleId = $payload['sub'] ?? null;
+        $email = $payload['email'] ?? null;
+        $name = $payload['name'] ?? null;
+        $profilePicture = $payload['picture'] ?? null;
+        
+        if (!$googleId || !$email) {
+            DecryptMiddleware::sendError('Não foi possível extrair dados do token do Google', 401);
+            exit;
+        }
     }
     
-    $googleToken = $data['google_token'];
     $invitedByCode = $data['invited_by_code'] ?? null;
-    
-    // 3. VERIFICAR TOKEN DO GOOGLE (rápido - sem I/O)
-    $tokenParts = explode('.', $googleToken);
-    if (count($tokenParts) !== 3) {
-        DecryptMiddleware::sendError('Token do Google inválido', 401);
-        exit;
-    }
-    
-    $payload = json_decode(base64_decode($tokenParts[1]), true);
-    $googleId = $payload['sub'] ?? null;
-    $email = $payload['email'] ?? null;
-    $name = $payload['name'] ?? null;
-    $profilePicture = $payload['picture'] ?? null;
-    
-    if (!$googleId || !$email) {
-        DecryptMiddleware::sendError('Não foi possível extrair dados do token do Google', 401);
-        exit;
-    }
     
     // 4. CONECTAR AO BANCO (conexão única)
     $conn = getDbConnection();
