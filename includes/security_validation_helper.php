@@ -25,6 +25,7 @@ function validateSecurityHeaders($conn, $user) {
     
     // Headers obrigatórios
     $requiredHeaders = [
+        'X-REQ',
         'X-FULL-REQUEST-HASH',
         'X-DEVICE-MODEL',
         'X-PLATFORM-VERSION',
@@ -42,6 +43,18 @@ function validateSecurityHeaders($conn, $user) {
             ]);
             exit;
         }
+    }
+    
+    // Validar X-REQ (token rotativo)
+    $xReq = $allHeaders['X-REQ'];
+    if (strlen($xReq) < 10) {
+        http_response_code(403);
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Invalid X-REQ (too short)',
+            'code' => 'INVALID_SECURITY_HEADER'
+        ]);
+        exit;
     }
     
     // Validar X-FULL-REQUEST-HASH (formato SHA256)
