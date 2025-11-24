@@ -30,12 +30,12 @@ try {
     // Obter limite (padrão: 100)
     $limit = isset($_GET['limit']) ? min((int)$_GET['limit'], 100) : 100;
     
-    // Buscar ranking
+    // Buscar ranking (pontos diários)
     $stmt = $conn->prepare("
-        SELECT id, name, profile_picture, points
+        SELECT id, name, profile_picture, daily_points as points
         FROM users 
-        WHERE points > 0
-        ORDER BY points DESC, created_at ASC
+        WHERE daily_points > 0
+        ORDER BY daily_points DESC, created_at ASC
         LIMIT ?
     ");
     $stmt->bind_param("i", $limit);
