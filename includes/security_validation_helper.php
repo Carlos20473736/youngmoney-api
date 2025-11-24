@@ -28,6 +28,7 @@ function validateSecurityHeaders($conn, $user) {
     // Headers obrigatórios
     $requiredHeaders = [
         'X-REQ',
+        'X-REQUEST-ID',
         'X-FULL-REQUEST-HASH',
         'X-DEVICE-MODEL',
         'X-PLATFORM-VERSION',
@@ -64,6 +65,47 @@ function validateSecurityHeaders($conn, $user) {
             'code' => 'INVALID_XREQ_TOKEN'
         ]);
         exit;
+    }
+    
+    // Validar X-REQUEST-ID (deve ser UUID único)
+    $requestId = $allHeaders['X-REQUEST-ID'];
+    if (!preg_match('/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i', $requestId)) {
+        http_response_code(403);
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Invalid X-REQUEST-ID format (must be UUID)',
+            'code' => 'INVALID_REQUEST_ID'
+        ]);
+        exit;
+    }
+    
+    // Verificar se X-REQUEST-ID já foi usado (anti-replay)
+    $stmt = $conn->prepare("SELECT id FROM request_ids WHERE request_id = ? AND user_id = ? LIMIT 1");
+    $userId = $user['id'];
+    $stmt->bind_param("si", $requestId, $userId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    if ($result->num_rows > 0) {
+        $stmt->close();
+        http_response_code(403);
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'X-REQUEST-ID already used (replay attack detected)',
+            'code' => 'DUPLICATE_REQUEST_ID'
+        ]);
+        exit;
+    }
+    $stmt->close();
+    
+    // Registrar X-REQUEST-ID como usado
+    try {
+        $stmt = $conn->prepare("INSERT INTO request_ids (user_id, request_id, created_at) VALUES (?, ?, NOW())");
+        $stmt->bind_param("is", $userId, $requestId);
+        $stmt->execute();
+        $stmt->close();
+    } catch (Exception $e) {
+        error_log("[SECURITY] Failed to save request_id: " . $e->getMessage());
     }
     
     // Validar X-FULL-REQUEST-HASH (formato SHA256)
