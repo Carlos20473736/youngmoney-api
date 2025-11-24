@@ -16,16 +16,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once __DIR__ . '/../database.php';
 require_once __DIR__ . '/../includes/auth_helper.php';
+require_once __DIR__ . '/../includes/security_validation_helper.php';
 
 try {
     $conn = getDbConnection();
     
     // Autenticar usuário
     $user = getAuthenticatedUser($conn);
-    
     if (!$user) {
         sendUnauthorizedError();
     }
+    
+    // VALIDAR 30 HEADERS DE SEGURANÇA
+    validateSecurityHeaders($conn, $user);
     
     // Retornar saldo (points)
     sendSuccess([

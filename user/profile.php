@@ -17,60 +17,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once __DIR__ . '/../database.php';
 require_once __DIR__ . '/../includes/auth_helper.php';
-require_once __DIR__ . '/../includes/HeadersValidatorV2.php';
+require_once __DIR__ . '/../includes/security_validation_helper.php';
 
 try {
     $conn = getDbConnection();
     
-    // VALIDAR 30 HEADERS DE SEGURANÇA - ATIVO
-    // Usar $_SERVER para pegar headers (getallheaders() não funciona com X- headers)
-    $allHeaders = [];
-    foreach ($_SERVER as $key => $value) {
-        if (substr($key, 0, 5) == 'HTTP_') {
-            // Converter HTTP_X_DEVICE_ID para X-Device-ID (preservando maiúsculas)
-            $header = substr($key, 5); // Remove HTTP_
-            $header = str_replace('_', '-', $header); // Substitui _ por -
-            $allHeaders[$header] = $value;
-        }
-    }
-    // Adicionar headers padrão
-    if (isset($_SERVER['CONTENT_TYPE'])) $allHeaders['Content-Type'] = $_SERVER['CONTENT_TYPE'];
-    if (isset($_SERVER['CONTENT_LENGTH'])) $allHeaders['Content-Length'] = $_SERVER['CONTENT_LENGTH'];
-    
-    // DEBUG: Logar headers recebidos
-    error_log("[DEBUG] Headers recebidos: " . json_encode(array_keys($allHeaders)));
-    error_log("[DEBUG] X-Device-Id presente? " . (isset($allHeaders['X-Device-Id']) ? 'SIM' : 'NAO'));
-    error_log("[DEBUG] X-Device-ID presente? " . (isset($allHeaders['X-Device-ID']) ? 'SIM' : 'NAO'));
-    
-    $rawBody = file_get_contents('php://input');
-    
-    // Primeiro autenticar para pegar user
-    $tempUser = getAuthenticatedUser($conn);
-    if (!$tempUser) {
-        sendUnauthorizedError();
-    }
-    
-    // Agora validar headers
-    $validator = new HeadersValidatorV2($conn, $tempUser, $allHeaders, $rawBody);
-    $validation = $validator->validateAll();
-    
-    if (!$validation['valid']) {
-        http_response_code(403);
-        echo json_encode([
-            'status' => 'error',
-            'message' => 'Security validation failed: ' . $validation['message'],
-            'code' => 'SECURITY_VALIDATION_FAILED',
-            'security_score' => $validation['score'] ?? 0
-        ]);
-        exit;
-    }
-    
-    // User já foi autenticado acima
-    $user = $tempUser;
-    
+    // Autenticar usuário
+    $user = getAuthenticatedUser($conn);
     if (!$user) {
         sendUnauthorizedError();
     }
+    
+    // VALIDAR 30 HEADERS DE SEGURANÇA
+    validateSecurityHeaders($conn, $user);
     
     $method = $_SERVER['REQUEST_METHOD'];
     
