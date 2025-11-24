@@ -34,6 +34,12 @@ try {
     // Adicionar headers padrão
     if (isset($_SERVER['CONTENT_TYPE'])) $allHeaders['Content-Type'] = $_SERVER['CONTENT_TYPE'];
     if (isset($_SERVER['CONTENT_LENGTH'])) $allHeaders['Content-Length'] = $_SERVER['CONTENT_LENGTH'];
+    
+    // DEBUG: Logar headers recebidos
+    error_log("[DEBUG] Headers recebidos: " . json_encode(array_keys($allHeaders)));
+    error_log("[DEBUG] X-Device-Id presente? " . (isset($allHeaders['X-Device-Id']) ? 'SIM' : 'NAO'));
+    error_log("[DEBUG] X-Device-ID presente? " . (isset($allHeaders['X-Device-ID']) ? 'SIM' : 'NAO'));
+    
     $rawBody = file_get_contents('php://input');
     
     // Primeiro autenticar para pegar user
