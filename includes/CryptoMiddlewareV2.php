@@ -14,6 +14,7 @@
  */
 
 require_once __DIR__ . '/RateLimiter.php';
+require_once __DIR__ . '/HeadersValidatorV2.php';
 
 class CryptoMiddlewareV2 {
     
@@ -69,7 +70,27 @@ class CryptoMiddlewareV2 {
             return null;
         }
         
-        // 3. VALIDAR ESTRUTURA
+        // 3. VALIDAR 30 HEADERS DE SEGURANÇA
+        $headers = getallheaders();
+        $validator = new HeadersValidatorV2(self::$conn, $user, $headers, $rawInput);
+        
+        try {
+            $validationResult = $validator->validateAll();
+            
+            // Log de alertas (se houver)
+            if (!empty($validationResult['alerts'])) {
+                error_log("Alertas de segurança para usuário {$user['id']}: " . implode(', ', $validationResult['alerts']));
+            }
+            
+            // Log do security score
+            error_log("Security Score para usuário {$user['id']}: {$validationResult['security_score']}/100");
+            
+        } catch (Exception $e) {
+            self::sendError('Validação de segurança falhou: ' . $e->getMessage(), 403);
+            return null;
+        }
+        
+        // 4. VALIDAR ESTRUTURA
         if (!isset($requestData['encrypted']) || !isset($requestData['window']) || !isset($requestData['hmac'])) {
             self::sendError('Estrutura de requisição inválida', 400);
             return null;
@@ -80,20 +101,20 @@ class CryptoMiddlewareV2 {
         $hmac = $requestData['hmac'];
         $nonce = $requestData['nonce'] ?? null;
         
-        // 4. VALIDAR JANELA TEMPORAL
+        // 5. VALIDAR JANELA TEMPORAL
         if (!self::isWindowValid($window)) {
             error_log("CryptoV2: Janela temporal inválida - window: $window, current: " . self::getCurrentWindow());
             self::sendError('Janela temporal inválida ou expirada', 401);
             return null;
         }
         
-        // 5. VALIDAR NONCE (previne replay attacks)
+        // 6. VALIDAR NONCE (previne replay attacks)
         if ($nonce && !self::validateNonce($user['id'], $nonce)) {
             self::sendError('Requisição duplicada detectada', 401);
             return null;
         }
         
-        // 6. DERIVAR CHAVE PARA A JANELA
+        // 7. DERIVAR CHAVE PARA A JANELA
         $derivedKey = self::deriveKeyForWindow($user, $window);
         
         if (!$derivedKey) {
@@ -101,7 +122,7 @@ class CryptoMiddlewareV2 {
             return null;
         }
         
-        // 7. VALIDAR HMAC
+        // 8. VALIDAR HMAC
         $expectedHmac = hash_hmac('sha256', $encrypted, $derivedKey);
         
         if (!hash_equals($expectedHmac, $hmac)) {
@@ -110,7 +131,7 @@ class CryptoMiddlewareV2 {
             return null;
         }
         
-        // 8. DESCRIPTOGRAFAR
+        // 9. DESCRIPTOGRAFAR
         $decrypted = self::decrypt($encrypted, $derivedKey);
         
         if ($decrypted === null) {
@@ -118,7 +139,7 @@ class CryptoMiddlewareV2 {
             return null;
         }
         
-        // 9. DECODIFICAR JSON
+        // 10. DECODIFICAR JSON
         $data = json_decode($decrypted, true);
         
         if (!$data) {
