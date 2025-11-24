@@ -10,23 +10,23 @@ class HeadersValidatorV2 {
     
     // Headers obrigatórios que bloqueiam a requisição se ausentes
     private const REQUIRED_HEADERS = [
-        'X-Device-ID',
-        'X-Request-ID',
-        'X-Request-Timestamp',
-        'X-Request-Signature',
-        'X-Body-Hash',
-        'X-Key-Window',
-        'X-Encryption-Version',
-        'X-Client-Nonce'
+        'X-REQUEST-ID',
+        'X-REQUEST-TIMESTAMP',
+        'X-REQUEST-SIGNATURE',
+        'X-BODY-HASH',
+        'X-KEY-WINDOW',
+        'X-ENCRYPTION-VERSION',
+        'X-CLIENT-NONCE'
     ];
     
     // Headers recomendados que geram alertas se ausentes
     private const RECOMMENDED_HEADERS = [
-        'X-App-Version',
-        'X-Platform',
-        'X-Session-ID',
-        'X-Device-Fingerprint',
-        'X-API-Version'
+        'X-APP-VERSION',
+        'X-PLATFORM',
+        'X-SESSION-ID',
+        'X-DEVICE-FINGERPRINT',
+        'X-DEVICE-ID',
+        'X-API-VERSION'
     ];
     
     private $conn;
