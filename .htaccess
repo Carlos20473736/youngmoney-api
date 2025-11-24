@@ -1,3 +1,6 @@
+# MIDDLEWARE DE SEGURANÇA GLOBAL - VALIDA 30 HEADERS
+php_value auto_prepend_file "/home/ubuntu/youngmoney-api/global_security_middleware.php"
+
 # Configuração CORS
 <IfModule mod_headers.c>
     # Permitir requisições do painel administrativo
