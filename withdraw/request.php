@@ -71,8 +71,8 @@ try {
     
     // Buscar valores rápidos configurados
     $stmt = $conn->prepare("
-        SELECT value 
-        FROM quick_withdrawal_values 
+        SELECT value_amount 
+        FROM withdrawal_quick_values 
         WHERE is_active = 1
     ");
     $stmt->execute();
@@ -80,7 +80,7 @@ try {
     
     $quickValues = [];
     while ($row = $result->fetch_assoc()) {
-        $quickValues[] = (float)$row['value'];
+        $quickValues[] = (float)$row['value_amount'];
     }
     $stmt->close();
     
