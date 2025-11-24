@@ -9,13 +9,10 @@
 class HeadersValidatorV2 {
     
     // Headers obrigatórios que bloqueiam a requisição se ausentes
+    // Apenas os mais essenciais para evitar bloqueios desnecessários
     private const REQUIRED_HEADERS = [
         'X-REQUEST-ID',
         'X-REQUEST-TIMESTAMP',
-        'X-REQUEST-SIGNATURE',
-        'X-BODY-HASH',
-        'X-KEY-WINDOW',
-        'X-ENCRYPTION-VERSION',
         'X-CLIENT-NONCE'
     ];
     
@@ -26,7 +23,13 @@ class HeadersValidatorV2 {
         'X-SESSION-ID',
         'X-DEVICE-FINGERPRINT',
         'X-DEVICE-ID',
-        'X-API-VERSION'
+        'X-API-VERSION',
+        'X-REQUEST-SIGNATURE',
+        'X-BODY-HASH',
+        'X-KEY-WINDOW',
+        'X-ENCRYPTION-VERSION',
+        'X-DEVICE-MODEL',
+        'X-PLATFORM-VERSION'
     ];
     
     private $conn;
