@@ -14,6 +14,19 @@ require_once __DIR__ . '/xreq_manager.php';
  * @return array Resultado da validação
  */
 function validateSecurityHeaders($conn, $user) {
+    // Verificar método HTTP - apenas POST/PUT precisam de validação completa
+    $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+    
+    // GET não precisa de validação de headers de segurança
+    if ($method === 'GET') {
+        return [
+            'valid' => true,
+            'score' => 100,
+            'message' => 'GET request - security headers validation skipped',
+            'method' => 'GET'
+        ];
+    }
+    
     // Extrair headers do $_SERVER
     $allHeaders = [];
     foreach ($_SERVER as $key => $value) {
