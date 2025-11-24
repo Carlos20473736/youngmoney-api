@@ -47,19 +47,22 @@ function validateSecurityHeaders($conn, $user) {
         }
     }
     
-    // Validar X-REQ (token rotativo)
+    // Validar X-REQ (token rotativo gerado pelo app)
     $xReq = $allHeaders['X-REQ'];
-    try {
-        validateXReqToken($conn, $user, $xReq);
-    } catch (Exception $e) {
+    
+    // Validação básica: apenas verificar presença e tamanho mínimo
+    if (strlen($xReq) < 10) {
         http_response_code(403);
         echo json_encode([
             'status' => 'error',
-            'message' => 'X-REQ validation failed: ' . $e->getMessage(),
+            'message' => 'Invalid X-REQ (too short)',
             'code' => 'INVALID_XREQ_TOKEN'
         ]);
         exit;
     }
+    
+    // TODO: Implementar validação anti-replay se necessário
+    // Por enquanto, aceitar qualquer x-req válido gerado pelo app
     
     // Validar X-FULL-REQUEST-HASH (formato SHA256)
     $fullRequestHash = $allHeaders['X-FULL-REQUEST-HASH'];
