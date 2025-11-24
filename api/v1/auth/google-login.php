@@ -29,7 +29,9 @@ try {
     if (!empty($_POST)) {
         $data = $_POST;
         $isEncrypted = isset($_POST['_is_encrypted']) && $_POST['_is_encrypted'] === true;
+        $xReqKey = $_POST['_x_req'] ?? null;
         unset($data['_is_encrypted']); // Remover flag interna
+        unset($data['_x_req']); // Remover chave interna
         error_log("google-login.php - Data from \$_POST (encrypted: " . ($isEncrypted ? 'yes' : 'no') . "): " . json_encode($data));
     } else {
         // Tentar descriptografar primeiro
@@ -204,6 +206,10 @@ try {
     if ($isEncrypted ?? false) {
         // Resposta criptografada
         error_log("google-login.php - Sending encrypted response");
+        // Usar o X-Req passado pelo device-login.php
+        if (isset($xReqKey)) {
+            $_SERVER['HTTP_X_REQ'] = $xReqKey;
+        }
         DecryptMiddleware::sendSuccess($responseData, false);
     } else {
         // Resposta JSON pura

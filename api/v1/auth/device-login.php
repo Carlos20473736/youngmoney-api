@@ -17,6 +17,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once __DIR__ . '/../../../includes/DecryptMiddleware.php';
 
+/**
+ * Descriptografa dados criptografados
+ */
+function decryptData($encryptedBase64, $key) {
+    try {
+        $method = 'AES-256-CBC';
+        $ivLength = openssl_cipher_iv_length($method);
+        
+        // Decodificar base64
+        $data = base64_decode($encryptedBase64);
+        
+        if ($data === false) {
+            error_log("device-login.php - Failed to decode base64");
+            return false;
+        }
+        
+        // Extrair IV e dados criptografados
+        $iv = substr($data, 0, $ivLength);
+        $ciphertext = substr($data, $ivLength);
+        
+        // Derivar chave de 32 bytes
+        $derivedKey = hash('sha256', $key, true);
+        
+        // Descriptografar
+        $decrypted = openssl_decrypt($ciphertext, $method, $derivedKey, OPENSSL_RAW_DATA, $iv);
+        
+        if ($decrypted === false) {
+            error_log("device-login.php - openssl_decrypt failed");
+            return false;
+        }
+        
+        error_log("device-login.php - Decryption successful, length: " . strlen($decrypted));
+        return $decrypted;
+        
+    } catch (Exception $e) {
+        error_log("device-login.php - Decryption exception: " . $e->getMessage());
+        return false;
+    }
+}
+
 try {
     // 1. LER RAW INPUT
     $rawInput = file_get_contents('php://input');
@@ -26,13 +66,29 @@ try {
     
     // 2. VERIFICAR SE É REQUISIÇÃO CRIPTOGRAFADA
     if (isset($rawData['encrypted']) && $rawData['encrypted'] === true && isset($rawData['data'])) {
-        error_log("device-login.php - Detected encrypted request, calling DecryptMiddleware");
+        error_log("device-login.php - Detected encrypted request");
         
-        // Chamar DecryptMiddleware para descriptografar
-        $data = DecryptMiddleware::processRequest();
+        // Obter o header X-Req (chave de descriptografia)
+        $headers = getallheaders();
+        $xReq = $headers['X-Req'] ?? $headers['x-req'] ?? null;
         
-        if (empty($data)) {
-            error_log("device-login.php - DecryptMiddleware returned empty data");
+        if (!$xReq) {
+            error_log("device-login.php - ERROR: X-Req header missing");
+            http_response_code(400);
+            echo json_encode([
+                'status' => 'error',
+                'message' => 'Header X-Req é obrigatório para requisições criptografadas'
+            ]);
+            exit;
+        }
+        
+        error_log("device-login.php - X-Req header found: " . substr($xReq, 0, 50) . "...");
+        
+        // Descriptografar o campo 'data'
+        $decrypted = decryptData($rawData['data'], $xReq);
+        
+        if ($decrypted === false) {
+            error_log("device-login.php - Decryption failed");
             http_response_code(400);
             echo json_encode([
                 'status' => 'error',
@@ -41,12 +97,27 @@ try {
             exit;
         }
         
+        // Decodificar JSON descriptografado
+        $data = json_decode($decrypted, true);
+        
+        if (!$data) {
+            error_log("device-login.php - Failed to decode decrypted JSON");
+            http_response_code(400);
+            echo json_encode([
+                'status' => 'error',
+                'message' => 'Dados descriptografados inválidos'
+            ]);
+            exit;
+        }
+        
         error_log("device-login.php - Data after decryption: " . json_encode($data));
+        $isEncrypted = true;
         
     } else {
         // 3. JSON PURO (não criptografado)
         error_log("device-login.php - Plain JSON request");
         $data = $rawData;
+        $isEncrypted = false;
     }
     
     // 4. VALIDAR DADOS
@@ -68,7 +139,8 @@ try {
     
     // Passar dados via $_POST para o google-login.php
     $_POST = $data;
-    $_POST['_is_encrypted'] = isset($rawData['encrypted']) && $rawData['encrypted'] === true;
+    $_POST['_is_encrypted'] = $isEncrypted;
+    $_POST['_x_req'] = $headers['X-Req'] ?? $headers['x-req'] ?? null;
     
     include __DIR__ . '/google-login.php';
     
