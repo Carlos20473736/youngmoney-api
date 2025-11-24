@@ -5,5 +5,13 @@
 
 :80 {
     root * /app
-    php_server
+    
+    # Servir arquivos PHP diretamente
+    file_server
+    
+    # Processar PHP
+    php_fastcgi localhost:9000
+    
+    # Tentar servir arquivo, senão index.php
+    try_files {path} {path}.php /index.php
 }
