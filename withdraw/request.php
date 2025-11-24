@@ -48,14 +48,57 @@ try {
         sendError('Tipo e chave PIX são obrigatórios', 400);
     }
     
+    // Buscar configurações de saque (limites e valores rápidos)
+    $stmt = $conn->prepare("
+        SELECT setting_key, setting_value 
+        FROM system_settings 
+        WHERE setting_key IN ('min_withdrawal', 'max_withdrawal')
+    ");
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    $minWithdrawal = 10; // padrão
+    $maxWithdrawal = 1000; // padrão
+    
+    while ($row = $result->fetch_assoc()) {
+        if ($row['setting_key'] === 'min_withdrawal') {
+            $minWithdrawal = (float)$row['setting_value'];
+        } elseif ($row['setting_key'] === 'max_withdrawal') {
+            $maxWithdrawal = (float)$row['setting_value'];
+        }
+    }
+    $stmt->close();
+    
+    // Buscar valores rápidos configurados
+    $stmt = $conn->prepare("
+        SELECT value 
+        FROM quick_withdrawal_values 
+        WHERE is_active = 1
+    ");
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    $quickValues = [];
+    while ($row = $result->fetch_assoc()) {
+        $quickValues[] = (float)$row['value'];
+    }
+    $stmt->close();
+    
     // Verificar se usuário tem saldo suficiente
     if ($user['points'] < $amount) {
         sendError('Saldo insuficiente', 400);
     }
     
-    // Verificar valor mínimo (exemplo: R$ 10,00)
-    if ($amount < 10) {
-        sendError('Valor mínimo para saque é R$ 10,00', 400);
+    // Validar valor: aceitar se for um valor rápido OU se estiver dentro dos limites
+    $isQuickValue = in_array($amount, $quickValues);
+    $isWithinLimits = ($amount >= $minWithdrawal && $amount <= $maxWithdrawal);
+    
+    if (!$isQuickValue && !$isWithinLimits) {
+        if ($amount < $minWithdrawal) {
+            sendError("Valor mínimo para saque é R$ " . number_format($minWithdrawal, 2, ',', '.'), 400);
+        } else {
+            sendError("Valor máximo para saque é R$ " . number_format($maxWithdrawal, 2, ',', '.'), 400);
+        }
     }
     
     // Iniciar transação
