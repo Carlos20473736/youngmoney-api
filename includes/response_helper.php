@@ -15,12 +15,11 @@ require_once __DIR__ . '/xreq_manager.php';
  * @param int $statusCode Código HTTP (padrão: 200)
  */
 function sendJsonResponse($conn, $user, $data, $statusCode = 200) {
-    // Extrair User-Agent e IP para geração do novo x-req
-    $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
-    $ipAddress = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+    // Extrair User-Agent para geração do novo x-req
+    $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'okhttp/4.12.0';
     
     // Gerar novo x-req para próxima requisição
-    $newXReq = generateNewXReq($conn, $user, $userAgent, $ipAddress);
+    $newXReq = generateNewXReq($conn, $user, $userAgent);
     
     // Adicionar novo x-req no header da resposta
     header("X-New-Req: $newXReq");

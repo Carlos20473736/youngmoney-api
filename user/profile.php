@@ -48,9 +48,8 @@ try {
         }
         
         // Gerar novo x-req para próxima requisição
-        $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
-        $ipAddress = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
-        $newXReq = generateNewXReq($conn, $user, $userAgent, $ipAddress);
+        $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'okhttp/4.12.0';
+        $newXReq = generateNewXReq($conn, $user, $userAgent);
         header("X-New-Req: $newXReq");
         
         // Retornar perfil completo do usuário

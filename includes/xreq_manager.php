@@ -23,15 +23,14 @@ class XReqManager {
     /**
      * Valida um x-req token gerado pelo app
      * Formato esperado: "timestamp:signature"
-     * Assinatura MD5 de: timestamp + secretKey + userAgent + ipAddress
+     * Assinatura MD5 de: timestamp + secretKey + userAgent
      * 
      * @param string $xReq Token x-req recebido
      * @param string $userAgent User-Agent do request
-     * @param string $ipAddress IP do cliente
      * @return bool True se válido
      * @throws Exception Se token inválido
      */
-    public function validateXReq($xReq, $userAgent, $ipAddress) {
+    public function validateXReq($xReq, $userAgent) {
         $userId = $this->user['id'];
         
         // 1. Verificar tamanho mínimo
@@ -65,8 +64,8 @@ class XReqManager {
         }
         
         // 4. Validar assinatura MD5
-        // Formato: timestamp + secretKey + userAgent + ipAddress
-        $dataToSign = $timestamp . self::SECRET_KEY . $userAgent . $ipAddress;
+        // Formato: timestamp + secretKey + userAgent
+        $dataToSign = $timestamp . self::SECRET_KEY . $userAgent;
         $expectedSignature = md5($dataToSign);
         
         if (!hash_equals($expectedSignature, strtolower($signature))) {
@@ -109,12 +108,11 @@ class XReqManager {
      * Formato: "timestamp:signature"
      * 
      * @param string $userAgent User-Agent do request
-     * @param string $ipAddress IP do cliente
      * @return string Token x-req
      */
-    public function generateXReq($userAgent, $ipAddress) {
+    public function generateXReq($userAgent) {
         $timestamp = time() * 1000; // Milissegundos
-        $dataToSign = $timestamp . self::SECRET_KEY . $userAgent . $ipAddress;
+        $dataToSign = $timestamp . self::SECRET_KEY . $userAgent;
         $signature = md5($dataToSign);
         
         return $timestamp . ':' . $signature;
@@ -163,16 +161,16 @@ class XReqManager {
 /**
  * Função helper para validar x-req
  */
-function validateXReqToken($conn, $user, $token, $userAgent, $ipAddress) {
+function validateXReqToken($conn, $user, $token, $userAgent) {
     $manager = new XReqManager($conn, $user);
-    return $manager->validateXReq($token, $userAgent, $ipAddress);
+    return $manager->validateXReq($token, $userAgent);
 }
 
 /**
  * Função helper para gerar novo x-req
  */
-function generateNewXReq($conn, $user, $userAgent, $ipAddress) {
+function generateNewXReq($conn, $user, $userAgent) {
     $manager = new XReqManager($conn, $user);
-    return $manager->generateXReq($userAgent, $ipAddress);
+    return $manager->generateXReq($userAgent);
 }
 ?>
