@@ -3,7 +3,6 @@
 
 header("Content-Type: application/json");
 require_once '../../database.php';
-require_once __DIR__ . '/../xreq/validate.php';
 require_once __DIR__ . '/../../includes/ResponseHelper.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
