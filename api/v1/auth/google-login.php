@@ -28,8 +28,9 @@ try {
     // 1. PROCESSAR REQUISIÇÃO - aceitar $_POST (do device-login), criptografado ou JSON puro
     if (!empty($_POST)) {
         $data = $_POST;
-        $isEncrypted = false;
-        error_log("google-login.php - Data from \$_POST: " . json_encode($data));
+        $isEncrypted = isset($_POST['_is_encrypted']) && $_POST['_is_encrypted'] === true;
+        unset($data['_is_encrypted']); // Remover flag interna
+        error_log("google-login.php - Data from \$_POST (encrypted: " . ($isEncrypted ? 'yes' : 'no') . "): " . json_encode($data));
     } else {
         // Tentar descriptografar primeiro
         $data = DecryptMiddleware::processRequest();
