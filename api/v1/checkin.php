@@ -87,16 +87,16 @@ try {
         $totalCheckins = (int)$totalRow['total'];
         
         // Verificar se pode fazer check-in
-        // Pode se: não tem check-in OU último check-in foi ANTES do último reset
+        // Pode se: não tem check-in HOJE (CURDATE())
         $canCheckin = true;
         $lastCheckinDate = null;
         
         if ($lastCheckin) {
             $lastCheckinDate = date('Y-m-d', strtotime($lastCheckin['created_at']));
-            $lastCheckinDatetime = $lastCheckin['created_at'];
+            $today = date('Y-m-d');
             
-            // Se o último check-in foi DEPOIS do último reset, não pode fazer check-in
-            if (strtotime($lastCheckinDatetime) >= strtotime($lastResetDatetime)) {
+            // Se o último check-in foi HOJE, não pode fazer check-in
+            if ($lastCheckinDate === $today) {
                 $canCheckin = false;
             }
         }
@@ -114,22 +114,21 @@ try {
     
     // POST - Fazer check-in
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        // Verificar se já fez check-in depois do último reset
+        // Verificar se já fez check-in HOJE
         $stmt = $pdo->prepare("
             SELECT id 
             FROM daily_checkin 
             WHERE user_id = ? 
-            AND created_at >= ?
-            ORDER BY created_at DESC 
+            AND DATE(created_at) = CURDATE()
             LIMIT 1
         ");
-        $stmt->execute([$userId, $lastResetDatetime]);
+        $stmt->execute([$userId]);
         $recentCheckin = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if ($recentCheckin) {
             echo json_encode([
                 'status' => 'error',
-                'message' => 'Você já fez check-in hoje! Aguarde o próximo reset.'
+                'message' => 'Você já fez check-in hoje! Volte amanhã.'
             ]);
             exit;
         }
@@ -137,10 +136,13 @@ try {
         // Fazer check-in
         $pointsEarned = rand(500, 5000); // Pontos aleatórios entre 500 e 5000
         
-        // Inserir registro de check-in
+        // Inserir registro de check-in (ou atualizar se já existe)
         $stmt = $pdo->prepare("
             INSERT INTO daily_checkin (user_id, points_reward, checkin_date, created_at) 
             VALUES (?, ?, CURDATE(), NOW())
+            ON DUPLICATE KEY UPDATE 
+                points_reward = VALUES(points_reward),
+                created_at = NOW()
         ");
         $stmt->execute([$userId, $pointsEarned]);
         
