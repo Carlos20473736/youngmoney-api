@@ -25,28 +25,14 @@ require_once __DIR__ . '/../../../includes/SecureKeyManager.php';
 require_once __DIR__ . '/../../../includes/DecryptMiddleware.php';
 
 try {
-    // 1. PROCESSAR REQUISIÇÃO - aceitar $_POST (do device-login), criptografado ou JSON puro
+    // 1. PROCESSAR REQUISIÇÃO - APENAS JSON PURO (SEM CRIPTOGRAFIA)
     if (!empty($_POST)) {
         $data = $_POST;
-        $isEncrypted = isset($_POST['_is_encrypted']) && $_POST['_is_encrypted'] === true;
-        $xReqKey = $_POST['_x_req'] ?? null;
-        unset($data['_is_encrypted']); // Remover flag interna
-        unset($data['_x_req']); // Remover chave interna
-        error_log("google-login.php - Data from \$_POST (encrypted: " . ($isEncrypted ? 'yes' : 'no') . "): " . json_encode($data));
+        error_log("google-login.php - Data from \$_POST: " . json_encode($data));
     } else {
-        // Tentar descriptografar primeiro
-        $data = DecryptMiddleware::processRequest();
-        
-        if (!empty($data)) {
-            $isEncrypted = true;
-            error_log("google-login.php - Data from DecryptMiddleware (encrypted): " . json_encode($data));
-        } else {
-            // Fallback para JSON puro
-            $rawInput = file_get_contents('php://input');
-            $data = json_decode($rawInput, true);
-            $isEncrypted = false;
-            error_log("google-login.php - Data from raw input (plain JSON): " . json_encode($data));
-        }
+        $rawInput = file_get_contents('php://input');
+        $data = json_decode($rawInput, true);
+        error_log("google-login.php - Data from raw input: " . json_encode($data));
     }
     
     // 2. VALIDAR DADOS
@@ -203,23 +189,13 @@ try {
         ]
     ];
     
-    if ($isEncrypted ?? false) {
-        // Resposta criptografada
-        error_log("google-login.php - Sending encrypted response");
-        // Usar o X-Req passado pelo device-login.php
-        if (isset($xReqKey)) {
-            $_SERVER['HTTP_X_REQ'] = $xReqKey;
-        }
-        DecryptMiddleware::sendSuccess($responseData, false);
-    } else {
-        // Resposta JSON pura
-        error_log("google-login.php - Sending plain JSON response");
-        http_response_code(200);
-        echo json_encode([
-            'status' => 'success',
-            'data' => $responseData
-        ]);
-    }
+    // Resposta JSON pura (SEM CRIPTOGRAFIA)
+    error_log("google-login.php - Sending plain JSON response");
+    http_response_code(200);
+    echo json_encode([
+        'status' => 'success',
+        'data' => $responseData
+    ]);
     
     error_log("Google login optimized successful for user $userId");
     
