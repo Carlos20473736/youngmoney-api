@@ -143,9 +143,15 @@ class DecryptMiddleware {
         
         if ($encryptionKey) {
             $encrypted = self::encrypt($data, $encryptionKey);
-            echo json_encode(['encrypted' => $encrypted]);
+            echo json_encode([
+                'status' => 'success',
+                'encrypted' => $encrypted
+            ]);
         } else {
-            echo json_encode($data);
+            echo json_encode([
+                'status' => 'success',
+                'data' => $data
+            ]);
         }
         
         exit;
