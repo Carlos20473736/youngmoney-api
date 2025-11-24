@@ -67,33 +67,49 @@ try {
         $tables['security_violations'] = 'ERROR: ' . $conn->error;
     }
     
-    // 4. Adicionar colunas extras na tabela users
-    $alterQueries = [
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS device_id VARCHAR(36)",
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS device_fingerprint VARCHAR(64)",
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_request_sequence INT DEFAULT 0",
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS session_id VARCHAR(36)"
-    ];
+    // 4. Adicionar colunas extras na tabela users (verificar se existem primeiro)
+    $alterQueries = [];
+    
+    // Verificar quais colunas já existem
+    $existingColumns = [];
+    $result = $conn->query("SHOW COLUMNS FROM users");
+    while ($row = $result->fetch_assoc()) {
+        $existingColumns[] = $row['Field'];
+    }
+    
+    // Adicionar apenas colunas que não existem
+    if (!in_array('device_id', $existingColumns)) {
+        $alterQueries[] = "ALTER TABLE users ADD COLUMN device_id VARCHAR(36)";
+    }
+    if (!in_array('device_fingerprint', $existingColumns)) {
+        $alterQueries[] = "ALTER TABLE users ADD COLUMN device_fingerprint VARCHAR(64)";
+    }
+    if (!in_array('last_request_sequence', $existingColumns)) {
+        $alterQueries[] = "ALTER TABLE users ADD COLUMN last_request_sequence INT DEFAULT 0";
+    }
+    if (!in_array('session_id', $existingColumns)) {
+        $alterQueries[] = "ALTER TABLE users ADD COLUMN session_id VARCHAR(36)";
+    }
     
     $alterResults = [];
-    foreach ($alterQueries as $query) {
-        if ($conn->query($query)) {
-            $alterResults[] = 'OK';
-        } else {
-            // Ignorar erro se coluna já existe
-            if (strpos($conn->error, 'Duplicate column') === false) {
-                $alterResults[] = 'ERROR: ' . $conn->error;
+    
+    if (empty($alterQueries)) {
+        $alterResults[] = 'ALL COLUMNS ALREADY EXIST';
+    } else {
+        foreach ($alterQueries as $query) {
+            if ($conn->query($query)) {
+                $alterResults[] = 'OK';
             } else {
-                $alterResults[] = 'ALREADY EXISTS';
+                $alterResults[] = 'ERROR: ' . $conn->error;
             }
         }
     }
     
     $tables['users_columns'] = implode(', ', $alterResults);
     
-    // 5. Limpar request_ids antigos (mais de 5 minutos)
-    $sql5 = "DELETE FROM request_ids WHERE created_at < DATE_SUB(NOW(), INTERVAL 5 MINUTE)";
-    $conn->query($sql5);
+    // 5. Limpar nonces e request_ids antigos (mais de 5 minutos)
+    $conn->query("DELETE FROM request_nonces WHERE created_at < DATE_SUB(NOW(), INTERVAL 5 MINUTE)");
+    $conn->query("DELETE FROM request_ids WHERE created_at < DATE_SUB(NOW(), INTERVAL 5 MINUTE)");
     
     echo json_encode([
         'status' => 'success',
