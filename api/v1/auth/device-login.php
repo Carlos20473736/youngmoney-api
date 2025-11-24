@@ -28,9 +28,20 @@ try {
         $data = json_decode(file_get_contents('php://input'), true);
     }
     
-    // 2. VALIDAR DADOS
+    // 2. VALIDAR DADOS - aceitar device_id OU google_token
+    if (isset($data['google_token']) && !empty($data['google_token'])) {
+        // Se tiver google_token, redirecionar para google-login.php
+        $googleToken = $data['google_token'];
+        $invitedByCode = $data['invited_by_code'] ?? null;
+        
+        // Incluir e executar google-login.php
+        $_POST = $data; // Passar dados para o outro script
+        include __DIR__ . '/google-login.php';
+        exit;
+    }
+    
     if (!isset($data['device_id']) || empty($data['device_id'])) {
-        DecryptMiddleware::sendError('Device ID não fornecido');
+        DecryptMiddleware::sendError('Device ID ou Google Token é obrigatório');
         exit;
     }
     
