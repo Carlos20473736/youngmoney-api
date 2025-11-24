@@ -23,8 +23,18 @@ try {
     $conn = getDbConnection();
     
     // VALIDAR 30 HEADERS DE SEGURANÇA
-    $validator = new HeadersValidatorV2($conn);
-    $validation = $validator->validateRequest();
+    $allHeaders = getallheaders();
+    $rawBody = file_get_contents('php://input');
+    
+    // Primeiro autenticar para pegar user
+    $tempUser = getAuthenticatedUser($conn);
+    if (!$tempUser) {
+        sendUnauthorizedError();
+    }
+    
+    // Agora validar headers
+    $validator = new HeadersValidatorV2($conn, $tempUser, $allHeaders, $rawBody);
+    $validation = $validator->validateAll();
     
     if (!$validation['valid']) {
         http_response_code(403);
@@ -37,8 +47,8 @@ try {
         exit;
     }
     
-    // Autenticar usuário
-    $user = getAuthenticatedUser($conn);
+    // User já foi autenticado acima
+    $user = $tempUser;
     
     if (!$user) {
         sendUnauthorizedError();
