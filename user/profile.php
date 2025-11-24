@@ -31,15 +31,28 @@ try {
     $method = $_SERVER['REQUEST_METHOD'];
     
     if ($method === 'GET') {
+        // Determinar saudação baseada no horário (GMT-3)
+        date_default_timezone_set('America/Sao_Paulo');
+        $hour = (int)date('H');
+        
+        if ($hour >= 5 && $hour < 12) {
+            $greeting = 'BOM DIA';
+        } elseif ($hour >= 12 && $hour < 18) {
+            $greeting = 'BOA TARDE';
+        } else {
+            $greeting = 'BOA NOITE';
+        }
+        
         // Retornar perfil completo do usuário
         sendSuccess([
             'id' => (int)$user['id'],
             'email' => $user['email'],
             'name' => $user['name'],
-            'profile_picture' => $user['profile_picture'],
+            'profile_picture' => $user['profile_picture'] ?: '',
             'balance' => (int)$user['points'], // balance = points
             'points' => (int)$user['points'],
             'invite_code' => $user['invite_code'],
+            'greeting' => $greeting,
             'created_at' => $user['created_at'],
             'updated_at' => $user['updated_at']
         ]);

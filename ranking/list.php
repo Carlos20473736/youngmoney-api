@@ -50,7 +50,7 @@ try {
             'position' => $position++,
             'id' => (int)$row['id'],
             'name' => $row['name'],
-            'profile_picture' => $row['profile_picture'],
+            'profile_picture' => $row['profile_picture'] ?: '',
             'points' => (int)$row['points']
         ];
     }
@@ -58,7 +58,20 @@ try {
     $stmt->close();
     $conn->close();
     
+    // Determinar saudação baseada no horário (GMT-3)
+    date_default_timezone_set('America/Sao_Paulo');
+    $hour = (int)date('H');
+    
+    if ($hour >= 5 && $hour < 12) {
+        $greeting = 'BOM DIA';
+    } elseif ($hour >= 12 && $hour < 18) {
+        $greeting = 'BOA TARDE';
+    } else {
+        $greeting = 'BOA NOITE';
+    }
+    
     sendSuccess([
+        'greeting' => $greeting,
         'ranking' => $ranking,
         'total' => count($ranking)
     ]);

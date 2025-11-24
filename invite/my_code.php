@@ -25,9 +25,28 @@ try {
     
     $conn->close();
     
+    // Determinar saudação baseada no horário (GMT-3)
+    date_default_timezone_set('America/Sao_Paulo');
+    $hour = (int)date('H');
+    
+    if ($hour >= 5 && $hour < 12) {
+        $greeting = 'BOM DIA';
+    } elseif ($hour >= 12 && $hour < 18) {
+        $greeting = 'BOA TARDE';
+    } else {
+        $greeting = 'BOA NOITE';
+    }
+    
+    // Gerar link de compartilhamento
+    $inviteLink = "https://youngmoney.app/invite/" . $user['invite_code'];
+    
     sendSuccess([
         'invite_code' => $user['invite_code'],
-        'total_invites' => $totalInvites
+        'invite_link' => $inviteLink,
+        'total_invites' => $totalInvites,
+        'greeting' => $greeting,
+        'user_name' => $user['name'],
+        'user_picture' => $user['profile_picture'] ?: ''
     ]);
     
 } catch (Exception $e) {
