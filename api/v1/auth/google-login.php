@@ -1,12 +1,13 @@
 <?php
 /**
- * Google Login OTIMIZADO - Performance Máxima
+ * Google Login OTIMIZADO - Aceita Criptografado ou JSON Puro
  * 
  * Otimizações aplicadas:
  * - Conexão única ao banco (mysqli)
  * - Queries reduzidas de 5 para 2
  * - Cache de dados do usuário
  * - UPDATE condicional
+ * - Suporte para requisições criptografadas e JSON puro
  */
 
 header('Content-Type: application/json');
@@ -24,14 +25,25 @@ require_once __DIR__ . '/../../../includes/SecureKeyManager.php';
 require_once __DIR__ . '/../../../includes/DecryptMiddleware.php';
 
 try {
-    // 1. PROCESSAR REQUISIÇÃO - aceitar $_POST (do device-login) ou JSON puro
+    // 1. PROCESSAR REQUISIÇÃO - aceitar $_POST (do device-login), criptografado ou JSON puro
     if (!empty($_POST)) {
         $data = $_POST;
+        $isEncrypted = false;
         error_log("google-login.php - Data from \$_POST: " . json_encode($data));
     } else {
-        $rawInput = file_get_contents('php://input');
-        $data = json_decode($rawInput, true);
-        error_log("google-login.php - Data from raw input: " . json_encode($data));
+        // Tentar descriptografar primeiro
+        $data = DecryptMiddleware::processRequest();
+        
+        if (!empty($data)) {
+            $isEncrypted = true;
+            error_log("google-login.php - Data from DecryptMiddleware (encrypted): " . json_encode($data));
+        } else {
+            // Fallback para JSON puro
+            $rawInput = file_get_contents('php://input');
+            $data = json_decode($rawInput, true);
+            $isEncrypted = false;
+            error_log("google-login.php - Data from raw input (plain JSON): " . json_encode($data));
+        }
     }
     
     // 2. VALIDAR DADOS
@@ -173,26 +185,34 @@ try {
         ];
     }
     
-    // 8. ENVIAR RESPOSTA JSON PURA (sem criptografia)
-    $response = [
-        'status' => 'success',
-        'data' => [
-            'token' => $token,
-            'encrypted_seed' => $encryptedSeed,
-            'session_salt' => $sessionSalt,
-            'user' => [
-                'id' => (int)$user['id'],
-                'email' => $user['email'],
-                'name' => $user['name'],
-                'google_id' => $googleId,
-                'profile_picture' => $user['profile_picture'],
-                'points' => (int)$user['points']
-            ]
+    // 8. ENVIAR RESPOSTA (criptografada se a requisição foi criptografada, senão JSON puro)
+    $responseData = [
+        'token' => $token,
+        'encrypted_seed' => $encryptedSeed,
+        'session_salt' => $sessionSalt,
+        'user' => [
+            'id' => (int)$user['id'],
+            'email' => $user['email'],
+            'name' => $user['name'],
+            'google_id' => $googleId,
+            'profile_picture' => $user['profile_picture'],
+            'points' => (int)$user['points']
         ]
     ];
     
-    http_response_code(200);
-    echo json_encode($response);
+    if ($isEncrypted ?? false) {
+        // Resposta criptografada
+        error_log("google-login.php - Sending encrypted response");
+        DecryptMiddleware::sendSuccess($responseData, false);
+    } else {
+        // Resposta JSON pura
+        error_log("google-login.php - Sending plain JSON response");
+        http_response_code(200);
+        echo json_encode([
+            'status' => 'success',
+            'data' => $responseData
+        ]);
+    }
     
     error_log("Google login optimized successful for user $userId");
     

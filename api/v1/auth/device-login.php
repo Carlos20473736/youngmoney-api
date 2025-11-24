@@ -1,6 +1,6 @@
 <?php
 /**
- * Login Endpoint - Aceita Google Token (JSON Puro)
+ * Login Endpoint - Aceita Google Token (Criptografado ou JSON Puro)
  * 
  * Este endpoint redireciona para google-login.php
  */
@@ -15,27 +15,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
+require_once __DIR__ . '/../../../includes/DecryptMiddleware.php';
+
 try {
-    // 1. LER JSON PURO (sem criptografia)
-    $rawInput = file_get_contents('php://input');
-    error_log("device-login.php - Raw input: " . $rawInput);
+    // 1. TENTAR PROCESSAR REQUISIÇÃO CRIPTOGRAFADA PRIMEIRO
+    $data = DecryptMiddleware::processRequest();
     
-    $data = json_decode($rawInput, true);
-    error_log("device-login.php - Decoded data: " . json_encode($data));
-    
-    if (json_last_error() !== JSON_ERROR_NONE) {
-        error_log("device-login.php - JSON decode error: " . json_last_error_msg());
-        http_response_code(400);
-        echo json_encode([
-            'status' => 'error',
-            'message' => 'JSON inválido: ' . json_last_error_msg()
-        ]);
-        exit;
+    if (!empty($data)) {
+        error_log("device-login.php - Data from DecryptMiddleware (encrypted): " . json_encode($data));
+    } else {
+        // 2. FALLBACK PARA JSON PURO
+        $rawInput = file_get_contents('php://input');
+        error_log("device-login.php - Raw input: " . $rawInput);
+        
+        $data = json_decode($rawInput, true);
+        error_log("device-login.php - Data from JSON (plain): " . json_encode($data));
+        
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            error_log("device-login.php - JSON decode error: " . json_last_error_msg());
+            http_response_code(400);
+            echo json_encode([
+                'status' => 'error',
+                'message' => 'JSON inválido: ' . json_last_error_msg()
+            ]);
+            exit;
+        }
     }
     
-    // 2. VALIDAR DADOS
+    // 3. VALIDAR DADOS
     if (!isset($data['google_token']) || empty($data['google_token'])) {
         error_log("device-login.php - ERROR: google_token is missing or empty");
+        error_log("device-login.php - Available keys: " . implode(', ', array_keys($data ?: [])));
         http_response_code(400);
         echo json_encode([
             'status' => 'error',
@@ -46,7 +56,7 @@ try {
     
     error_log("device-login.php - google_token received: " . substr($data['google_token'], 0, 50) . "...");
     
-    // 3. REDIRECIONAR PARA GOOGLE-LOGIN
+    // 4. REDIRECIONAR PARA GOOGLE-LOGIN
     error_log("device-login.php - Redirecting to google-login.php");
     
     // Passar dados via $_POST para o google-login.php
