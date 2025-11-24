@@ -22,11 +22,11 @@ switch ($method) {
             while ($row = $result->fetch_assoc()) {
                 $history[] = $row;
             }
-            echo json_encode(['status' => 'success', 'data' => $history]);
+            echo json_encode($history);
             $stmt->close();
         } else {
-            http_response_code(400);
-            echo json_encode(['status' => 'error', 'message' => 'User ID is required']);
+            http_response_code(400 );
+            echo json_encode(['message' => 'User ID is required']);
         }
         break;
 
@@ -56,22 +56,22 @@ switch ($method) {
 
                 $conn->commit();
                 http_response_code(200 );
-                echo json_encode(['status' => 'success', 'data' => ['message' => 'Points added successfully']]);
+                echo json_encode(['message' => 'Points added successfully']);
 
             } catch (Exception $e) {
                 $conn->rollback();
                 http_response_code(500 );
-                echo json_encode(['status' => 'error', 'message' => 'Failed to add points', 'error' => $e->getMessage()]);
+                echo json_encode(['message' => 'Failed to add points', 'error' => $e->getMessage()]);
             }
         } else {
             http_response_code(400 );
-            echo json_encode(['status' => 'error', 'message' => 'User ID, points earned, and activity type are required']);
+            echo json_encode(['message' => 'User ID, points earned, and activity type are required']);
         }
         break;
 
     default:
         http_response_code(405 );
-        echo json_encode(['status' => 'error', 'message' => 'Method Not Allowed']);
+        echo json_encode(['message' => 'Method Not Allowed']);
         break;
 }
 

@@ -35,11 +35,11 @@ switch ($method) {
             while ($row = $result->fetch_assoc()) {
                 $withdrawals[] = $row;
             }
-            echo json_encode(['status' => 'success', 'data' => $withdrawals]);
+            echo json_encode($withdrawals);
             $stmt->close();
         } else {
             http_response_code(400);
-            echo json_encode(['status' => 'error', 'message' => 'User ID is required']);
+            echo json_encode(['message' => 'User ID is required']);
         }
         break;
 
@@ -52,7 +52,7 @@ switch ($method) {
 
             if (!isset($data['user_id']) || !isset($data['pix_key']) || !isset($data['pix_key_type']) || !isset($data['amount'])) {
                 http_response_code(400);
-                echo json_encode(['status' => 'error', 'message' => 'Dados incompletos']);
+                echo json_encode(['success' => false, 'error' => 'Dados incompletos']);
                 exit;
             }
 
@@ -64,7 +64,7 @@ switch ($method) {
             // Validar valor mínimo (R$ 1,00)
             if ($amountBrl < 1) {
                 http_response_code(400);
-                echo json_encode(['status' => 'error', 'message' => 'Valor mínimo: R$ 1,00']);
+                echo json_encode(['success' => false, 'error' => 'Valor mínimo: R$ 1,00']);
                 exit;
             }
 
@@ -79,7 +79,7 @@ switch ($method) {
             
             if ($result->num_rows === 0) {
                 http_response_code(404);
-                echo json_encode(['status' => 'error', 'message' => 'Usuário não encontrado']);
+                echo json_encode(['success' => false, 'error' => 'Usuário não encontrado']);
                 exit;
             }
             
@@ -91,12 +91,10 @@ switch ($method) {
             if ($currentPoints < $pointsRequired) {
                 http_response_code(400);
                 echo json_encode([
-                    'status' => 'error',
-                    'message' => 'Saldo insuficiente',
-                    'data' => [
-                        'current_points' => $currentPoints,
-                        'required_points' => $pointsRequired
-                    ]
+                    'success' => false, 
+                    'error' => 'Saldo insuficiente',
+                    'current_points' => $currentPoints,
+                    'required_points' => $pointsRequired
                 ]);
                 exit;
             }
@@ -131,7 +129,7 @@ switch ($method) {
 
                 http_response_code(201);
                 echo json_encode([
-                    'status' => 'success',
+                    'success' => true,
                     'data' => [
                         'withdrawal_id' => $withdrawalId,
                         'amount_brl' => $amountBrl,
@@ -150,13 +148,13 @@ switch ($method) {
 
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(['status' => 'error', 'message' => 'Erro ao processar saque: ' . $e->getMessage()]);
+            echo json_encode(['success' => false, 'error' => 'Erro ao processar saque: ' . $e->getMessage()]);
         }
         break;
 
     default:
         http_response_code(405);
-        echo json_encode(['status' => 'error', 'message' => 'Method Not Allowed']);
+        echo json_encode(['message' => 'Method Not Allowed']);
         break;
 }
 

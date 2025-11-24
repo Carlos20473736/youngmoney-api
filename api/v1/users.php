@@ -3,9 +3,14 @@
 
 header("Content-Type: application/json");
 require_once '../../database.php';
+require_once '../../middleware/auto_reset.php';
+require_once __DIR__ . '/../xreq/validate.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
 $conn = getDbConnection();
+
+// Verificar e fazer reset automático se necessário
+checkAndResetRanking($conn);
 
 switch ($method) {
     case 'GET':
@@ -18,16 +23,16 @@ switch ($method) {
             $stmt->execute();
             $result = $stmt->get_result();
             if ($result->num_rows > 0) {
-                echo json_encode(["status" => "success", "data" => $result->fetch_assoc()]);
+                echo json_encode($result->fetch_assoc());
             } else {
                 http_response_code(404);
-                echo json_encode(['status' => 'error', 'message' => 'User not found']);
+                echo json_encode(['message' => 'User not found']);
             }
             $stmt->close();
         } else {
             // Lógica para listar todos os usuários (cuidado com a privacidade)
             http_response_code(400);
-            echo json_encode(['status' => 'error', 'message' => 'User ID is required']);
+            echo json_encode(['message' => 'User ID is required']);
         }
         break;
 
@@ -45,15 +50,15 @@ switch ($method) {
 
             if ($stmt->execute()) {
                 http_response_code(201);
-                echo json_encode(['status' => 'success', 'data' => ['message' => 'User created successfully', 'user_id' => $conn->insert_id]]);
+                echo json_encode(['message' => 'User created successfully', 'user_id' => $conn->insert_id]);
             } else {
                 http_response_code(500);
-                echo json_encode(['status' => 'error', 'message' => 'Failed to create user', 'error' => $stmt->error]);
+                echo json_encode(['message' => 'Failed to create user', 'error' => $stmt->error]);
             }
             $stmt->close();
         } else {
             http_response_code(400);
-            echo json_encode(['status' => 'error', 'message' => 'Username, password, and email are required']);
+            echo json_encode(['message' => 'Username, password, and email are required']);
         }
         break;
 
@@ -61,7 +66,7 @@ switch ($method) {
 
     default:
         http_response_code(405);
-        echo json_encode(['status' => 'error', 'message' => 'Method Not Allowed']);
+        echo json_encode(['message' => 'Method Not Allowed']);
         break;
 }
 
