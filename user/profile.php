@@ -17,9 +17,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once __DIR__ . '/../database.php';
 require_once __DIR__ . '/../includes/auth_helper.php';
+require_once __DIR__ . '/../includes/HeadersValidatorV2.php';
 
 try {
     $conn = getDbConnection();
+    
+    // VALIDAR 30 HEADERS DE SEGURANÇA
+    $validator = new HeadersValidatorV2($conn);
+    $validation = $validator->validateRequest();
+    
+    if (!$validation['valid']) {
+        http_response_code(403);
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Security validation failed: ' . $validation['message'],
+            'code' => 'SECURITY_VALIDATION_FAILED',
+            'security_score' => $validation['score'] ?? 0
+        ]);
+        exit;
+    }
     
     // Autenticar usuário
     $user = getAuthenticatedUser($conn);
