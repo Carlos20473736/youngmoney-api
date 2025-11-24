@@ -14,6 +14,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once '../../database.php';
 require_once __DIR__ . '/../../xreq/validate.php';
+require_once __DIR__ . '/../../includes/auth_helper.php';
+require_once __DIR__ . '/../../includes/security_validation_helper.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
 $conn = getDbConnection();
@@ -47,6 +49,17 @@ switch ($method) {
         try {
             // Validar XReq token
             validateXReq();
+            
+            // Autenticar usuário
+            $user = getAuthenticatedUser($conn);
+            if (!$user) {
+                http_response_code(401);
+                echo json_encode(['success' => false, 'error' => 'Não autenticado']);
+                exit;
+            }
+            
+            // VALIDAR 30 HEADERS DE SEGURANÇA
+            validateSecurityHeaders($conn, $user);
             
             $data = json_decode(file_get_contents('php://input'), true);
 

@@ -31,6 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' && $_SERVER['REQUEST_METHOD'] !== 'GET
 // Incluir configuração do banco de dados
 require_once __DIR__ . '/../../database.php';
 require_once __DIR__ . '/../../middleware/auto_reset.php';
+require_once __DIR__ . '/../../includes/security_validation_helper.php';
 
 // Obter conexão
 $conn = getDbConnection();
@@ -102,6 +103,9 @@ try {
         ]);
         exit;
     }
+    
+    // VALIDAR 30 HEADERS DE SEGURANÇA
+    validateSecurityHeaders($conn, $user);
     
     $userId = $user['id'];
     
