@@ -1,0 +1,13 @@
+# Permitir acesso direto a arquivos PHP
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    
+    # Permitir acesso direto a arquivos na pasta /api/
+    RewriteCond %{REQUEST_URI} ^/api/
+    RewriteRule ^ - [L]
+    
+    # Redirecionar outras requisições para index.php (se necessário)
+    # RewriteCond %{REQUEST_FILENAME} !-f
+    # RewriteCond %{REQUEST_FILENAME} !-d
+    # RewriteRule ^ index.php [L]
+</IfModule>
