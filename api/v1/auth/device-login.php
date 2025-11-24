@@ -1,6 +1,6 @@
 <?php
 /**
- * Login Endpoint - Aceita Google Token
+ * Login Endpoint - Aceita Google Token (JSON Puro)
  * 
  * Este endpoint redireciona para google-login.php
  */
@@ -15,38 +15,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-require_once __DIR__ . '/../../../includes/DecryptMiddleware.php';
-
 try {
-    // 1. PROCESSAR REQUISIÇÃO
-    $data = DecryptMiddleware::processRequest();
+    // 1. LER JSON PURO (sem criptografia)
+    $rawInput = file_get_contents('php://input');
+    error_log("device-login.php - Raw input: " . $rawInput);
     
-    // LOG: Dados após DecryptMiddleware
-    error_log("device-login.php - Data after DecryptMiddleware: " . json_encode($data));
+    $data = json_decode($rawInput, true);
+    error_log("device-login.php - Decoded data: " . json_encode($data));
     
-    if (empty($data)) {
-        $data = json_decode(file_get_contents('php://input'), true);
-        error_log("device-login.php - Data from raw input: " . json_encode($data));
-    }
-    
-    // LOG: Dados finais
-    error_log("device-login.php - Final data: " . json_encode($data));
-    error_log("device-login.php - google_token present: " . (isset($data['google_token']) ? 'YES' : 'NO'));
-    error_log("device-login.php - google_token value: " . ($data['google_token'] ?? 'NULL'));
-    
-    // 2. VALIDAR DADOS - aceitar apenas google_token
-    if (!isset($data['google_token']) || empty($data['google_token'])) {
-        error_log("device-login.php - ERROR: google_token is missing or empty");
-        DecryptMiddleware::sendError('Google token é obrigatório');
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        error_log("device-login.php - JSON decode error: " . json_last_error_msg());
+        http_response_code(400);
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'JSON inválido: ' . json_last_error_msg()
+        ]);
         exit;
     }
     
+    // 2. VALIDAR DADOS
+    if (!isset($data['google_token']) || empty($data['google_token'])) {
+        error_log("device-login.php - ERROR: google_token is missing or empty");
+        http_response_code(400);
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Google token é obrigatório'
+        ]);
+        exit;
+    }
+    
+    error_log("device-login.php - google_token received: " . substr($data['google_token'], 0, 50) . "...");
+    
     // 3. REDIRECIONAR PARA GOOGLE-LOGIN
     error_log("device-login.php - Redirecting to google-login.php");
+    
+    // Passar dados via $_POST para o google-login.php
+    $_POST = $data;
+    
     include __DIR__ . '/google-login.php';
     
 } catch (Exception $e) {
-    error_log("Login error: " . $e->getMessage());
-    DecryptMiddleware::sendError('Erro interno: ' . $e->getMessage(), 500);
+    error_log("device-login.php - Exception: " . $e->getMessage());
+    http_response_code(500);
+    echo json_encode([
+        'status' => 'error',
+        'message' => 'Erro interno: ' . $e->getMessage()
+    ]);
 }
 ?>

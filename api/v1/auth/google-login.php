@@ -24,16 +24,24 @@ require_once __DIR__ . '/../../../includes/SecureKeyManager.php';
 require_once __DIR__ . '/../../../includes/DecryptMiddleware.php';
 
 try {
-    // 1. PROCESSAR REQUISIÇÃO
-    $data = DecryptMiddleware::processRequest();
-    
-    if (empty($data)) {
-        $data = json_decode(file_get_contents('php://input'), true);
+    // 1. PROCESSAR REQUISIÇÃO - aceitar $_POST (do device-login) ou JSON puro
+    if (!empty($_POST)) {
+        $data = $_POST;
+        error_log("google-login.php - Data from \$_POST: " . json_encode($data));
+    } else {
+        $rawInput = file_get_contents('php://input');
+        $data = json_decode($rawInput, true);
+        error_log("google-login.php - Data from raw input: " . json_encode($data));
     }
     
     // 2. VALIDAR DADOS
     if (!isset($data['google_token'])) {
-        DecryptMiddleware::sendError('Google token é obrigatório');
+        error_log("google-login.php - ERROR: google_token is missing");
+        http_response_code(400);
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Google token é obrigatório'
+        ]);
         exit;
     }
     
@@ -43,7 +51,8 @@ try {
     // 3. VERIFICAR TOKEN DO GOOGLE (rápido - sem I/O)
     $tokenParts = explode('.', $googleToken);
     if (count($tokenParts) !== 3) {
-        DecryptMiddleware::sendError('Token do Google inválido', 401);
+        http_response_code(401);
+        echo json_encode(['status' => 'error', 'message' => 'Token do Google inválido']);
         exit;
     }
     
@@ -54,7 +63,8 @@ try {
     $profilePicture = $payload['picture'] ?? null;
     
     if (!$googleId || !$email) {
-        DecryptMiddleware::sendError('Não foi possível extrair dados do token do Google', 401);
+        http_response_code(401);
+        echo json_encode(['status' => 'error', 'message' => 'Não foi possível extrair dados do token do Google']);
         exit;
     }
     
@@ -163,25 +173,32 @@ try {
         ];
     }
     
-    // 8. ENVIAR RESPOSTA (sem criptografia para máxima velocidade)
-    DecryptMiddleware::sendSuccess([
-        'token' => $token,
-        'encrypted_seed' => $encryptedSeed,
-        'session_salt' => $sessionSalt,
-        'user' => [
-            'id' => (int)$user['id'],
-            'email' => $user['email'],
-            'name' => $user['name'],
-            'google_id' => $googleId,
-            'profile_picture' => $user['profile_picture'],
-            'points' => (int)$user['points']
+    // 8. ENVIAR RESPOSTA JSON PURA (sem criptografia)
+    $response = [
+        'status' => 'success',
+        'data' => [
+            'token' => $token,
+            'encrypted_seed' => $encryptedSeed,
+            'session_salt' => $sessionSalt,
+            'user' => [
+                'id' => (int)$user['id'],
+                'email' => $user['email'],
+                'name' => $user['name'],
+                'google_id' => $googleId,
+                'profile_picture' => $user['profile_picture'],
+                'points' => (int)$user['points']
+            ]
         ]
-    ], false);
+    ];
+    
+    http_response_code(200);
+    echo json_encode($response);
     
     error_log("Google login optimized successful for user $userId");
     
 } catch (Exception $e) {
     error_log("Google login error: " . $e->getMessage());
-    DecryptMiddleware::sendError('Erro interno: ' . $e->getMessage(), 500);
+    http_response_code(500);
+    echo json_encode(['status' => 'error', 'message' => 'Erro interno: ' . $e->getMessage()]);
 }
 ?>
