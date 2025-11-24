@@ -22,7 +22,9 @@ require_once __DIR__ . '/../includes/HeadersValidatorV2.php';
 try {
     $conn = getDbConnection();
     
-    // VALIDAR 30 HEADERS DE SEGURANÇA
+    // VALIDAR 30 HEADERS DE SEGURANÇA - TEMPORÁRIAMENTE DESATIVADO
+    // TODO: Reativar quando novo APK com 30 headers for compilado
+    /*
     $allHeaders = getallheaders();
     $rawBody = file_get_contents('php://input');
     
@@ -49,6 +51,10 @@ try {
     
     // User já foi autenticado acima
     $user = $tempUser;
+    */
+    
+    // Autenticação normal (sem validação de headers)
+    $user = getAuthenticatedUser($conn);
     
     if (!$user) {
         sendUnauthorizedError();
