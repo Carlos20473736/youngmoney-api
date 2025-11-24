@@ -11,8 +11,11 @@ require_once __DIR__ . '/../database.php';
 try {
     $conn = getDbConnection();
     
+    // Dropar tabela se existir (para recriar corretamente)
+    $conn->query("DROP TABLE IF EXISTS xreq_tokens");
+    
     // Criar tabela xreq_tokens
-    $sql = "CREATE TABLE IF NOT EXISTS xreq_tokens (
+    $sql = "CREATE TABLE xreq_tokens (
         id INT AUTO_INCREMENT PRIMARY KEY,
         user_id INT NOT NULL,
         token VARCHAR(64) NOT NULL,
