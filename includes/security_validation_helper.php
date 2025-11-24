@@ -50,9 +50,13 @@ function validateSecurityHeaders($conn, $user) {
     // Validar X-REQ (token rotativo gerado pelo app)
     $xReq = $allHeaders['X-REQ'];
     
-    // Validação rigorosa: verificar unicidade e anti-replay
+    // Extrair User-Agent e IP para validação da assinatura
+    $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
+    $ipAddress = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+    
+    // Validação rigorosa: verificar assinatura MD5 e anti-replay
     try {
-        validateXReqToken($conn, $user, $xReq);
+        validateXReqToken($conn, $user, $xReq, $userAgent, $ipAddress);
     } catch (Exception $e) {
         http_response_code(403);
         echo json_encode([
