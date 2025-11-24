@@ -124,11 +124,22 @@ try {
     
     $spinsRemaining = $maxDailySpins - $spinsToday;
     
+    // Determinar saudação baseada no horário
+    $hour = (int)date('H');
+    if ($hour >= 5 && $hour < 12) {
+        $greeting = 'BOM DIA';
+    } elseif ($hour >= 12 && $hour < 18) {
+        $greeting = 'BOA TARDE';
+    } else {
+        $greeting = 'BOA NOITE';
+    }
+    
     // Se for GET, apenas retornar giros restantes e valores da roleta
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         echo json_encode([
             'status' => 'success',
             'data' => [
+                'greeting' => $greeting,
                 'spins_remaining' => $spinsRemaining,
                 'spins_today' => $spinsToday,
                 'max_daily_spins' => $maxDailySpins,
@@ -210,6 +221,7 @@ try {
             'status' => 'success',
             'message' => "Você ganhou {$prizeValue} pontos!",
             'data' => [
+                'greeting' => $greeting,
                 'prize_value' => $prizeValue,
                 'prize_index' => $prizeIndex,
                 'spins_remaining' => $spinsRemaining,
