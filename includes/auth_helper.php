@@ -73,6 +73,7 @@ function sendSuccess($data) {
         'status' => 'success',
         'data' => $data
     ]);
+    exit;
 }
 
 /**
@@ -84,5 +85,6 @@ function sendError($message, $code = 400) {
         'status' => 'error',
         'message' => $message
     ]);
+    exit;
 }
 ?>
