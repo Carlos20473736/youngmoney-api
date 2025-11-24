@@ -23,7 +23,17 @@ try {
     $conn = getDbConnection();
     
     // VALIDAR 30 HEADERS DE SEGURANÇA - ATIVO
-    $allHeaders = getallheaders();
+    // Usar $_SERVER para pegar headers (getallheaders() não funciona com X- headers)
+    $allHeaders = [];
+    foreach ($_SERVER as $key => $value) {
+        if (substr($key, 0, 5) == 'HTTP_') {
+            $header = str_replace(' ', '-', ucwords(str_replace('_', ' ', strtolower(substr($key, 5)))));
+            $allHeaders[$header] = $value;
+        }
+    }
+    // Adicionar headers padrão
+    if (isset($_SERVER['CONTENT_TYPE'])) $allHeaders['Content-Type'] = $_SERVER['CONTENT_TYPE'];
+    if (isset($_SERVER['CONTENT_LENGTH'])) $allHeaders['Content-Length'] = $_SERVER['CONTENT_LENGTH'];
     $rawBody = file_get_contents('php://input');
     
     // Primeiro autenticar para pegar user
