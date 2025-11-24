@@ -86,7 +86,7 @@ switch ($method) {
             
             if (!$user) {
                 http_response_code(404);
-                echo json_encode(['success' => false, 'error' => 'Usuário não encontrado']);
+                echo json_encode(['status' => 'success', 'data' => ['success' => false, 'error' => 'Usuário não encontrado']]);
                 exit;
             }
             
@@ -112,19 +112,17 @@ switch ($method) {
             // Calcular pontos ganhos
             $pointsEarned = $stats['total'] * POINTS_INVITER;
             
-            echo json_encode([
-                'success' => true,
+            echo json_encode(['status' => 'success', 'data' => ['success' => true,
                 'data' => [
                     'invite_code' => $inviteCode,
                     'friends_invited' => intval($stats['total']),
                     'points_earned' => $pointsEarned,
                     'points_per_invite' => POINTS_INVITER,
                     'points_for_friend' => POINTS_INVITED
-                ]
-            ]);
+                ]]]);
         } else {
             http_response_code(400);
-            echo json_encode(['success' => false, 'error' => 'user_id é obrigatório']);
+            echo json_encode(['status' => 'success', 'data' => ['success' => false, 'error' => 'user_id é obrigatório']]);
         }
         break;
         
@@ -142,7 +140,7 @@ switch ($method) {
         
         if (!$userId || !isset($input['invite_code'])) {
             http_response_code(400);
-            echo json_encode(['success' => false, 'error' => 'user_id e invite_code são obrigatórios']);
+            echo json_encode(['status' => 'success', 'data' => ['success' => false, 'error' => 'user_id e invite_code são obrigatórios']]);
             exit;
         }
         
@@ -158,7 +156,7 @@ switch ($method) {
         
         if (!$user) {
             http_response_code(404);
-            echo json_encode(['success' => false, 'error' => 'Usuário não encontrado']);
+            echo json_encode(['status' => 'success', 'data' => ['success' => false, 'error' => 'Usuário não encontrado']]);
             exit;
         }
         
@@ -170,7 +168,7 @@ switch ($method) {
         if ($result->num_rows > 0) {
             $stmt->close();
             http_response_code(400);
-            echo json_encode(['success' => false, 'error' => 'Você já usou um código de convite']);
+            echo json_encode(['status' => 'success', 'data' => ['success' => false, 'error' => 'Você já usou um código de convite']]);
             exit;
         }
         $stmt->close();
@@ -185,14 +183,14 @@ switch ($method) {
         
         if (!$inviter) {
             http_response_code(404);
-            echo json_encode(['success' => false, 'error' => 'Código de convite inválido']);
+            echo json_encode(['status' => 'success', 'data' => ['success' => false, 'error' => 'Código de convite inválido']]);
             exit;
         }
         
         // Não pode usar o próprio código
         if ($inviter['id'] == $userId) {
             http_response_code(400);
-            echo json_encode(['success' => false, 'error' => 'Você não pode usar seu próprio código']);
+            echo json_encode(['status' => 'success', 'data' => ['success' => false, 'error' => 'Você não pode usar seu próprio código']]);
             exit;
         }
         
@@ -222,25 +220,23 @@ switch ($method) {
             
             $conn->commit();
             
-            echo json_encode([
-                'success' => true,
+            echo json_encode(['status' => 'success', 'data' => ['success' => true,
                 'message' => 'Código validado com sucesso!',
                 'data' => [
                     'points_earned' => POINTS_INVITED,
                     'inviter_name' => $inviter['name']
-                ]
-            ]);
+                ]]]);
             
         } catch (Exception $e) {
             $conn->rollback();
             http_response_code(500);
-            echo json_encode(['success' => false, 'error' => 'Erro ao processar convite: ' . $e->getMessage()]);
+            echo json_encode(['status' => 'success', 'data' => ['success' => false, 'error' => 'Erro ao processar convite: ' . $e->getMessage()]]);
         }
         break;
         
     default:
         http_response_code(405);
-        echo json_encode(['success' => false, 'error' => 'Método não permitido']);
+        echo json_encode(['status' => 'success', 'data' => ['success' => false, 'error' => 'Método não permitido']]);
         break;
 }
 

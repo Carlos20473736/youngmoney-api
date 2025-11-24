@@ -23,7 +23,7 @@ require_once __DIR__ . '/../../database.php';
 
 try {
     if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
-        echo json_encode(['success' => false, 'error' => 'Método não permitido']);
+        echo json_encode(['status' => 'success', 'data' => ['success' => false, 'error' => 'Método não permitido']]);
         exit;
     }
     
@@ -70,8 +70,7 @@ try {
     $conn->close();
     
     // Enviar resposta SEM criptografia
-    echo json_encode([
-        'success' => true,
+    echo json_encode(['status' => 'success', 'data' => ['success' => true,
         'data' => [
             'reset_time' => $reset_time,
             'reset_hour' => (int)$reset_hour,
@@ -80,14 +79,11 @@ try {
             'server_timestamp' => time(), // Unix timestamp em segundos
             'server_time' => date('H:i:s'), // Hora formatada HH:mm:ss
             'quick_withdrawal_values' => $quick_values
-        ]
-    ]);
+        ]]]);
     
 } catch (Exception $e) {
     error_log("Config simple endpoint error: " . $e->getMessage());
-    echo json_encode([
-        'success' => false,
-        'error' => 'Erro ao buscar configurações: ' . $e->getMessage()
-    ]);
+    echo json_encode(['status' => 'success', 'data' => ['success' => false,
+        'error' => 'Erro ao buscar configurações: ' . $e->getMessage()]]);
 }
 ?>

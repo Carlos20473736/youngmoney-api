@@ -22,7 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     if (!isset($input['invite_code']) || empty($input['invite_code'])) {
         http_response_code(400);
-        echo json_encode(['status' => 'success', 'data' => ['valid' => false, 'error' => 'invite_code é obrigatório']]);
+        echo json_encode(['valid' => false, 'error' => 'invite_code é obrigatório']);
         exit;
     }
     
@@ -37,19 +37,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt->close();
     
     if (!$inviter) {
-        echo json_encode(['status' => 'success', 'data' => ['valid' => false,
-            'error' => 'Código de convite inválido']]);
+        echo json_encode([
+            'valid' => false,
+            'error' => 'Código de convite inválido'
+        ]);
         exit;
     }
     
     // Código válido
-    echo json_encode(['status' => 'success', 'data' => ['valid' => true,
+    echo json_encode([
+        'valid' => true,
         'inviter_name' => $inviter['name'],
-        'inviter_id' => $inviter['id']]]);
+        'inviter_id' => $inviter['id']
+    ]);
     
 } else {
     http_response_code(405);
-    echo json_encode(['status' => 'success', 'data' => ['valid' => false, 'error' => 'Método não permitido']]);
+    echo json_encode(['valid' => false, 'error' => 'Método não permitido']);
 }
 
 $conn->close();
