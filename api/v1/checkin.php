@@ -150,6 +150,14 @@ try {
         $stmt = $pdo->prepare("UPDATE users SET points = points + ?, daily_points = daily_points + ? WHERE id = ?");
         $stmt->execute([$pointsEarned, $pointsEarned, $userId]);
         
+        // Registrar no histórico de pontos
+        $description = "Check-in Diário - Ganhou {$pointsEarned} pontos";
+        $stmt = $pdo->prepare("
+            INSERT INTO points_history (user_id, points, description, created_at)
+            VALUES (?, ?, ?, NOW())
+        ");
+        $stmt->execute([$userId, $pointsEarned, $description]);
+        
         // Contar total de check-ins
         $stmt = $pdo->prepare("SELECT COUNT(*) as total FROM daily_checkin WHERE user_id = ?");
         $stmt->execute([$userId]);
