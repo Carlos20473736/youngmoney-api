@@ -1,10 +1,20 @@
 <?php
 require_once __DIR__ . '/../config.php';
-require_once __DIR__ . '/../includes/response_helper.php';
 
 header('Content-Type: application/json');
 
 try {
+    // Conectar ao banco
+    global $pdo;
+    if (!isset($pdo)) {
+        $pdo = new PDO(
+            "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4",
+            DB_USER,
+            DB_PASS,
+            [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+        );
+    }
+    
     // Buscar primeiros 10 usuários
     $stmt = $pdo->query("
         SELECT id, name, email, referral_code, created_at
