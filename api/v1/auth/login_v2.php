@@ -40,7 +40,7 @@ try {
     $dbHost = getenv('DB_HOST') ?: 'localhost';
     $dbName = getenv('DB_NAME') ?: 'youngmoney';
     $dbUser = getenv('DB_USER') ?: 'root';
-    $dbPass = getenv('DB_PASS') ?: '';
+    $dbPass = getenv('DB_PASSWORD') ?: '';
     
     try {
         $pdo = new PDO(
