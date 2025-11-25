@@ -40,7 +40,7 @@ try {
     $stmt->close();
     $conn->close();
     
-    sendSuccess(['transactions' => $transactions, 'total' => count($transactions)]);
+    sendSuccess(['history' => $transactions, 'total' => count($transactions)]);
     
 } catch (Exception $e) {
     error_log("history/points.php error: " . $e->getMessage());
