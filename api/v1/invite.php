@@ -76,8 +76,8 @@ switch ($method) {
         if (isset($_GET['user_id'])) {
             $userId = intval($_GET['user_id']);
             
-            // Buscar código de convite do usuário
-            $stmt = $conn->prepare("SELECT invite_code FROM users WHERE id = ?");
+            // Buscar código de convite do usuário e se já usou código
+            $stmt = $conn->prepare("SELECT invite_code, has_used_invite_code FROM users WHERE id = ?");
             $stmt->bind_param("i", $userId);
             $stmt->execute();
             $result = $stmt->get_result();
@@ -119,7 +119,8 @@ switch ($method) {
                     'friends_invited' => intval($stats['total']),
                     'points_earned' => $pointsEarned,
                     'points_per_invite' => POINTS_INVITER,
-                    'points_for_friend' => POINTS_INVITED
+                    'points_for_friend' => POINTS_INVITED,
+                    'has_used_invite_code' => (bool)($user['has_used_invite_code'] ?? 0)
                 ]
             ]);
         } else {
@@ -213,10 +214,20 @@ switch ($method) {
             $stmt->execute();
             $stmt->close();
             
-            // Dar pontos para quem foi convidado
-            $stmt = $conn->prepare("UPDATE users SET points = points + ?, daily_points = daily_points + ? WHERE id = ?");
+            // Dar pontos para quem foi convidado e marcar que já usou código
+            $stmt = $conn->prepare("UPDATE users SET points = points + ?, daily_points = daily_points + ?, has_used_invite_code = 1 WHERE id = ?");
             $stmt->bind_param("iii", $pointsInvited, $pointsInvited, $userId);
             $pointsInvited = POINTS_INVITED;
+            $stmt->execute();
+            $stmt->close();
+            
+            // Registrar no histórico de pontos
+            $description = "Código de Convite - Ganhou {$pointsInvited} pontos";
+            $stmt = $conn->prepare("
+                INSERT INTO points_history (user_id, points, description, created_at)
+                VALUES (?, ?, ?, NOW())
+            ");
+            $stmt->bind_param("iis", $userId, $pointsInvited, $description);
             $stmt->execute();
             $stmt->close();
             
