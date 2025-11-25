@@ -15,11 +15,12 @@ try {
     if (!$user) { sendUnauthorizedError(); }
     
     $stmt = $conn->prepare("
-        SELECT id, points, type, description, created_at
-        FROM point_transactions 
+        SELECT id, points, description, created_at,
+               DATE_FORMAT(created_at, '%d/%m/%Y %H:%i') as formatted_date
+        FROM points_history 
         WHERE user_id = ?
         ORDER BY created_at DESC
-        LIMIT 50
+        LIMIT 100
     ");
     $stmt->bind_param("i", $user['id']);
     $stmt->execute();
@@ -30,9 +31,9 @@ try {
         $transactions[] = [
             'id' => (int)$row['id'],
             'points' => (int)$row['points'],
-            'type' => $row['type'],
             'description' => $row['description'],
-            'created_at' => $row['created_at']
+            'created_at' => $row['created_at'],
+            'formatted_date' => $row['formatted_date']
         ];
     }
     
