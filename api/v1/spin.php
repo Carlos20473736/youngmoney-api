@@ -32,6 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' && $_SERVER['REQUEST_METHOD'] !== 'GET
 require_once __DIR__ . '/../../database.php';
 require_once __DIR__ . '/../../middleware/auto_reset.php';
 require_once __DIR__ . '/../../includes/security_validation_helper.php';
+require_once __DIR__ . '/../../includes/auth_helper.php';
 
 // Obter conexão
 $conn = getDbConnection();
@@ -39,24 +40,7 @@ $conn = getDbConnection();
 // Verificar e fazer reset automático se necessário
 checkAndResetRanking($conn);
 
-// Função para validar token
-function getUserFromToken($conn) {
-    $headers = getallheaders();
-    $authHeader = $headers['Authorization'] ?? '';
-    
-    if (empty($authHeader) || !preg_match('/Bearer\s+(.*)$/i', $authHeader, $matches)) {
-        return null;
-    }
-    
-    $token = $matches[1];
-    
-    // Buscar usuário pelo token
-    $stmt = $conn->prepare("SELECT id, name, email FROM users WHERE token = ?");
-    $stmt->bind_param("s", $token);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    return $result->fetch_assoc();
-}
+// Função removida - agora usa auth_helper.php
 
 // Buscar valores da roleta e configurações do banco de dados
 $prizeValues = [];
@@ -93,15 +77,10 @@ try {
 }
 
 try {
-    // Validar autenticação
-    $user = getUserFromToken($conn);
+    // Validar autenticação usando auth_helper
+    $user = getAuthenticatedUser($conn);
     if (!$user) {
-        http_response_code(401);
-        echo json_encode([
-            'status' => 'error',
-            'message' => 'Não autenticado'
-        ]);
-        exit;
+        sendUnauthorizedError();
     }
     
     // VALIDAÇÃO DE HEADERS REMOVIDA - estava bloqueando requisições legítimas
