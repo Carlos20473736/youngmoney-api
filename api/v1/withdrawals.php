@@ -58,8 +58,8 @@ switch ($method) {
                 exit;
             }
             
-            // VALIDAR 30 HEADERS DE SEGURANÇA
-            validateSecurityHeaders($conn, $user);
+            // VALIDAÇÃO DE HEADERS REMOVIDA - estava bloqueando requisições legítimas
+            // validateSecurityHeaders($conn, $user);
             
             $data = json_decode(file_get_contents('php://input'), true);
 

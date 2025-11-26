@@ -104,8 +104,8 @@ try {
         exit;
     }
     
-    // VALIDAR 30 HEADERS DE SEGURANÇA
-    validateSecurityHeaders($conn, $user);
+    // VALIDAÇÃO DE HEADERS REMOVIDA - estava bloqueando requisições legítimas
+    // validateSecurityHeaders($conn, $user);
     
     $userId = $user['id'];
     

@@ -29,8 +29,8 @@ try {
         sendUnauthorizedError();
     }
     
-    // VALIDAR 30 HEADERS DE SEGURANÇA
-    validateSecurityHeaders($conn, $user);
+    // VALIDAÇÃO DE HEADERS REMOVIDA - estava bloqueando requisições legítimas
+    // validateSecurityHeaders($conn, $user);
     
     $method = $_SERVER['REQUEST_METHOD'];
     

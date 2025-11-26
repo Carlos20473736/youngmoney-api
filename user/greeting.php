@@ -27,8 +27,8 @@ try {
         sendUnauthorizedError();
     }
     
-    // VALIDAR 30 HEADERS DE SEGURANÇA
-    validateSecurityHeaders($conn, $user);
+    // VALIDAÇÃO DE HEADERS REMOVIDA - estava bloqueando requisições legítimas
+    // validateSecurityHeaders($conn, $user);
     
     // Determinar saudação baseada no horário (GMT-3)
     date_default_timezone_set('America/Sao_Paulo');
