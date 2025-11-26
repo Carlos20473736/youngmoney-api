@@ -24,9 +24,9 @@ try {
         sendError('Pontos inválidos', 400);
     }
     
-    // Adicionar pontos
-    $stmt = $conn->prepare("UPDATE users SET points = points + ? WHERE id = ?");
-    $stmt->bind_param("ii", $points, $user['id']);
+    // Adicionar pontos (total E daily_points para ranking)
+    $stmt = $conn->prepare("UPDATE users SET points = points + ?, daily_points = daily_points + ? WHERE id = ?");
+    $stmt->bind_param("iii", $points, $points, $user['id']);
     $stmt->execute();
     $stmt->close();
     
@@ -39,13 +39,14 @@ try {
     $stmt->execute();
     $stmt->close();
     
-    // Buscar novo saldo
-    $stmt = $conn->prepare("SELECT points FROM users WHERE id = ?");
+    // Buscar novo saldo e daily_points
+    $stmt = $conn->prepare("SELECT points, daily_points FROM users WHERE id = ?");
     $stmt->bind_param("i", $user['id']);
     $stmt->execute();
     $result = $stmt->get_result();
     $row = $result->fetch_assoc();
     $newBalance = (int)$row['points'];
+    $dailyPoints = (int)$row['daily_points'];
     $stmt->close();
     
     $conn->close();
@@ -53,6 +54,8 @@ try {
     sendSuccess([
         'points_added' => $points,
         'new_balance' => $newBalance,
+        'daily_points' => $dailyPoints,
+        'total_points' => $newBalance,
         'message' => 'Pontos adicionados com sucesso!'
     ]);
     
