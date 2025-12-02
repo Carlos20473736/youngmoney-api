@@ -6,7 +6,6 @@
 header("Content-Type: application/json");
 require_once '../../database.php';
 require_once __DIR__ . '/../../includes/HeadersValidator.php';
-require_once __DIR__ . '/../xreq/validate.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
 $conn = getDbConnection();

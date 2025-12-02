@@ -16,7 +16,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once '../../database.php';
 require_once __DIR__ . '/../../includes/HeadersValidator.php';
-require_once __DIR__ . '/../../xreq/validate.php';
 require_once __DIR__ . '/../../includes/auth_helper.php';
 require_once __DIR__ . '/../../includes/security_validation_helper.php';
 
