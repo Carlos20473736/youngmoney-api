@@ -10,6 +10,8 @@
 
 require_once __DIR__ . '/../database.php';
 
+$conn = getDbConnection();
+
 try {
     // 1. Tabela para Request IDs usados (anti-replay)
     $sql1 = "CREATE TABLE IF NOT EXISTS used_request_ids (
