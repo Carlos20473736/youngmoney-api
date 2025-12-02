@@ -1,5 +1,10 @@
 <?php
 /**
+
+// Security Headers
+require_once __DIR__ . '/../../includes/security_headers.php';
+setAPISecurityHeaders();
+
  * Endpoint Público de Configurações com Criptografia V2
  * Permite que o app Android busque configurações do sistema
  * 

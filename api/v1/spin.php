@@ -1,5 +1,10 @@
 <?php
 /**
+
+// Security Headers
+require_once __DIR__ . '/../../includes/security_headers.php';
+setAPISecurityHeaders();
+
  * Spin Wheel API
  * Backend decide valor aleatório e valida giros diários
  * 

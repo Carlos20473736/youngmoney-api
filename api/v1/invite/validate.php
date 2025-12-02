@@ -1,5 +1,10 @@
 <?php
 // Endpoint para APENAS validar código de convite (não adiciona pontos)
+
+// Security Headers
+require_once __DIR__ . '/../../includes/security_headers.php';
+setAPISecurityHeaders();
+
 // Usado pelo app para validação em tempo real
 
 header("Content-Type: application/json");

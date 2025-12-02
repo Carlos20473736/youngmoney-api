@@ -1,5 +1,10 @@
 <?php
 // Endpoint da API para Saques (v1)
+
+// Security Headers
+require_once __DIR__ . '/../../includes/security_headers.php';
+setAPISecurityHeaders();
+
 // Taxa de conversão: 10.000 pontos = R$ 1,00
 
 header("Content-Type: application/json");

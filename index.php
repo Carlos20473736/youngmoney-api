@@ -1,5 +1,7 @@
 <?php
-header('Content-Type: application/json');
+// Security Headers
+require_once __DIR__ . '/includes/security_headers.php';
+setAPISecurityHeaders();
 
 echo json_encode([
     'status' => 'success',

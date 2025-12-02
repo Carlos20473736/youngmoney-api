@@ -1,6 +1,11 @@
 <?php
 // Endpoint da API para Usuários (v1)
 
+// Security Headers
+require_once __DIR__ . '/../../includes/security_headers.php';
+setAPISecurityHeaders();
+
+
 header("Content-Type: application/json");
 require_once '../../database.php';
 require_once '../../middleware/auto_reset.php';

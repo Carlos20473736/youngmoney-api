@@ -1,5 +1,10 @@
 <?php
 /**
+
+// Security Headers
+require_once __DIR__ . '/../../includes/security_headers.php';
+setAPISecurityHeaders();
+
  * Endpoint Público - Valores Rápidos de Saque
  * Permite que o app Android busque os valores configurados
  * 
