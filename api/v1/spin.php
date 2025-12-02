@@ -1,9 +1,6 @@
 <?php
 /**
 
-// Security Headers
-require_once __DIR__ . '/../../includes/security_headers.php';
-setAPISecurityHeaders();
 
  * Spin Wheel API
  * Backend decide valor aleatório e valida giros diários
@@ -35,12 +32,18 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' && $_SERVER['REQUEST_METHOD'] !== 'GET
 
 // Incluir configuração do banco de dados
 require_once __DIR__ . '/../../database.php';
+require_once __DIR__ . '/../../includes/HeadersValidator.php';
 require_once __DIR__ . '/../../middleware/auto_reset.php';
 require_once __DIR__ . '/../../includes/security_validation_helper.php';
 require_once __DIR__ . '/../../includes/auth_helper.php';
 
 // Obter conexão
 $conn = getDbConnection();
+
+// Validar headers de segurança
+$validator = validateRequestHeaders($conn, true);
+if (!$validator) exit; // Já enviou resposta de erro
+
 
 // Verificar e fazer reset automático se necessário
 checkAndResetRanking($conn);

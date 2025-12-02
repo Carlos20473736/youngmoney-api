@@ -1,9 +1,6 @@
 <?php
 // Endpoint da API para Sistema de Convites (v1)
 
-// Security Headers
-require_once __DIR__ . '/../../includes/security_headers.php';
-setAPISecurityHeaders();
 
 
 header("Content-Type: application/json");
@@ -17,9 +14,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 require_once '../../database.php';
+require_once __DIR__ . '/../../includes/HeadersValidator.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
 $conn = getDbConnection();
+
+// Validar headers de segurança
+$validator = validateRequestHeaders($conn, true);
+if (!$validator) exit; // Já enviou resposta de erro
+
 
 // Função para validar token JWT
 function getUserFromToken($conn) {

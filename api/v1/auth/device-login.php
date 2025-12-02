@@ -1,9 +1,6 @@
 <?php
 /**
 
-// Security Headers
-require_once __DIR__ . '/../../includes/security_headers.php';
-setAPISecurityHeaders();
 
  * Login Endpoint - Aceita Google Token (JSON Puro - SEM CRIPTOGRAFIA)
  * 

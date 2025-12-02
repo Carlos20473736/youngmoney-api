@@ -1,7 +1,5 @@
 <?php
-// Security Headers
-require_once __DIR__ . '/includes/security_headers.php';
-setAPISecurityHeaders();
+header('Content-Type: application/json');
 
 echo json_encode([
     'status' => 'success',
@@ -14,4 +12,3 @@ echo json_encode([
         'POST /api/v1/withdrawals.php' => 'Request withdrawal'
     ]
 ]);
-?>

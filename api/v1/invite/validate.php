@@ -1,9 +1,6 @@
 <?php
 // Endpoint para APENAS validar código de convite (não adiciona pontos)
 
-// Security Headers
-require_once __DIR__ . '/../../includes/security_headers.php';
-setAPISecurityHeaders();
 
 // Usado pelo app para validação em tempo real
 
@@ -18,8 +15,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 require_once '../../../database.php';
+require_once __DIR__ . '/../../includes/HeadersValidator.php';
 
 $conn = getDbConnection();
+
+// Validar headers de segurança
+$validator = validateRequestHeaders($conn, true);
+if (!$validator) exit; // Já enviou resposta de erro
+
 
 // POST /api/v1/invite/validate.php - Apenas validar se código existe
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

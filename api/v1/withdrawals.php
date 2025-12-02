@@ -1,9 +1,6 @@
 <?php
 // Endpoint da API para Saques (v1)
 
-// Security Headers
-require_once __DIR__ . '/../../includes/security_headers.php';
-setAPISecurityHeaders();
 
 // Taxa de conversão: 10.000 pontos = R$ 1,00
 
@@ -18,12 +15,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 require_once '../../database.php';
+require_once __DIR__ . '/../../includes/HeadersValidator.php';
 require_once __DIR__ . '/../../xreq/validate.php';
 require_once __DIR__ . '/../../includes/auth_helper.php';
 require_once __DIR__ . '/../../includes/security_validation_helper.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
 $conn = getDbConnection();
+
+// Validar headers de segurança
+$validator = validateRequestHeaders($conn, true);
+if (!$validator) exit; // Já enviou resposta de erro
+
 
 // Taxa de conversão: 10.000 pontos = R$ 1,00
 define('POINTS_PER_REAL', 10000);
