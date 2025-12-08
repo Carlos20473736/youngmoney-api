@@ -7,7 +7,8 @@
  * 
  * 1. Ranking (daily_points = 0)
  * 2. Spin (DELETE registros de HOJE)
- * 3. Check-in (Atualiza last_reset_datetime - histórico preservado)
+ * 3. Monetag (DELETE eventos de impressões e cliques de HOJE)
+ * 4. Check-in (Atualiza last_reset_datetime - histórico preservado)
  * 
  * Lógica:
  * - Busca o horário configurado no painel admin
@@ -147,6 +148,9 @@ try {
     // 2. SPIN - Deletar registros de HOJE
     $spinsDeleted = $pdo->exec("DELETE FROM spin_history WHERE DATE(created_at) = '$current_date'");
     
+    // 2.5. MONETAG - Deletar eventos (impressões e cliques) de HOJE
+    $monetagDeleted = $pdo->exec("DELETE FROM monetag_events WHERE DATE(created_at) = '$current_date'");
+    
     // 3. CHECK-IN - Atualizar last_reset_datetime (histórico preservado)
     $stmt = $pdo->prepare("
         INSERT INTO system_settings (setting_key, setting_value, updated_at)
@@ -196,6 +200,10 @@ try {
             'spin' => [
                 'records_deleted' => $spinsDeleted,
                 'description' => 'Registros de giros de hoje deletados'
+            ],
+            'monetag' => [
+                'records_deleted' => $monetagDeleted,
+                'description' => 'Eventos de impressoes e cliques de hoje deletados'
             ],
             'checkin' => [
                 'records_deleted' => $checkinsDeleted,
